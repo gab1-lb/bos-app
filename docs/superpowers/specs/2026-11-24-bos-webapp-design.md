@@ -124,6 +124,11 @@ Les admins peuvent modifier les modèles. Une suggestion apparaît selon la phas
 - À l'arrivée sur une page : les blocs apparaissent en fondu-montée, l'un après l'autre (décalage ~60 ms) ; les jauges se remplissent de gauche à droite (~700 ms) ; les grands chiffres défilent jusqu'à leur valeur.
 - Animations désactivées si l'utilisateur demande « réduire les animations » au niveau du système.
 
+### 5.8 bis Vidéo de prise en main (demande ajoutée le 24/11)
+- L'accueil affiche une carte « Prendre en main BOS » (comme le site d'origine) qui ouvre une vidéo de démonstration dans une fenêtre.
+- Contenu : enregistrement réel de l'application (connexion, accueil, dossier et onglets, jauges, demandes d'infos, message pré-rempli, Mes dossiers), 60 à 90 s, sous-titres explicatifs ; une version FR et une version EN, choisie selon la langue de l'utilisateur.
+- Pas de voix off (pas de synthèse vocale disponible) ; la vidéo est régénérée par un script (`npm run record:tour`) quand l'interface évolue.
+
 ### 5.9 Reprise de l'existant
 - Le dossier exemple « Projet Hélios » est créé à l'initialisation, marqué comme exemple.
 - Import des dossiers de la version actuelle : j'ajoute moi-même à la page actuelle un bouton « Exporter mes dossiers (JSON) » ; la nouvelle application a un bouton « Importer » (admin et associate).

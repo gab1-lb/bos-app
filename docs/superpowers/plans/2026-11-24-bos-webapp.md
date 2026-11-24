@@ -268,6 +268,19 @@ expect(daysSince('2026-11-10T22:30:00+01:00', new Date('2026-11-11T08:00:00+01:0
 - [ ] **Step 1: Write the failing e2e test** (mode mémoire) : un `pending` approuvé en `analyst` par l'admin peut ensuite ouvrir `/` ; importer un fichier `bos-legacy-v1` avec un dossier « Signé » → il apparaît dans Mes dossiers en décision « Go DD » et pas sur l'accueil ; un analyste ne voit pas le bouton Supprimer ; filtre par phase.
 - [ ] **Step 2:** Run → FAIL. **Step 3:** Implémenter. **Step 4:** Run → PASS. **Step 5:** Commit `feat: deals list, import and admin`.
 
+### Task 12b: Vidéo de prise en main
+
+**Files:**
+- Create: `bos-app/scripts/record-tour.ts`, `bos-app/scripts/tour-script.ts` (étapes et sous-titres FR/EN), `bos-app/public/tour-fr.mp4`, `bos-app/public/tour-en.mp4`, `bos-app/public/tour-poster.jpg`, `bos-app/src/components/home/TourCard.tsx`
+- Modify: `bos-app/src/app/page.tsx` (carte en bas de l'accueil), `bos-app/package.json` (script `record:tour`), `bos-app/src/middleware.ts` (laisser passer `/tour-*.mp4` et le poster)
+- Test: `bos-app/e2e/tour.spec.ts`
+
+**Interfaces:**
+- Consumes: application complète en mode mémoire (tâches 9 à 12), personas.
+- Produces: `npm run record:tour` → lance l'app en mode mémoire, rejoue un parcours Playwright (`recordVideo`, 1440×900) avec un bandeau de sous-titres injecté dans la page, convertit en MP4 H.264 (ffmpeg, `-crf 28`, ≤ 10 Mo chacune), extrait le poster. `<TourCard locale>` : vignette + titre « Prendre en main BOS » + durée ; clic → `<dialog>` avec `<video controls autoplay muted playsinline>` sur `/tour-<locale>.mp4`.
+- [ ] **Step 1: Write the failing e2e test** : l'accueil affiche « Prendre en main BOS » ; le clic ouvre un lecteur dont la source est `/tour-fr.mp4` (et `/tour-en.mp4` en anglais) ; la vidéo répond en 200.
+- [ ] **Step 2:** Run → FAIL. **Step 3:** Écrire le script de parcours (8 à 10 étapes, 5 à 9 s chacune, sous-titres courts) et la carte. **Step 4:** Générer les vidéos, vérifier durée (60–90 s) et taille, regarder 3 images extraites. **Step 5:** Run → PASS. **Step 6:** Commit `feat(home): product tour video`.
+
 ### Task 13: Déploiement et guide d'installation
 
 **Files:**
