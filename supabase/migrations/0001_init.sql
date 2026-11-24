@@ -519,6 +519,8 @@ create policy activity_read on public.activity for select to authenticated
   using (public.has_role(array['admin', 'associate', 'analyst', 'reader']));
 create policy members_read on public.members for select to authenticated
   using (public.has_role(array['admin', 'associate', 'analyst', 'reader']));
+create policy members_read_self on public.members for select to authenticated
+  using (id = auth.uid());
 create policy mandate_read on public.mandate for select to authenticated
   using (public.has_role(array['admin', 'associate', 'analyst', 'reader']));
 create policy templates_read on public.templates for select to authenticated

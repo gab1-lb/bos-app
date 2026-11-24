@@ -398,4 +398,5 @@ export const EN: Record<string, string> = {
   "Accueil": "Home",
   "Votre accès est en attente de validation par un administrateur": "Your access is awaiting approval by an administrator",
   "Ce compte Google n'est pas autorisé": "This Google account is not authorised",
+  "La connexion avec Google a échoué. Réessayez.": "Google sign-in failed. Please try again.",
 };

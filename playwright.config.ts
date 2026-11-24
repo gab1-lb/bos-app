@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { defineConfig } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 3107);
@@ -7,7 +8,7 @@ const chromium = '/opt/pw-browsers/chromium';
 export default defineConfig({
   testDir: './e2e',
   reporter: 'list',
-  use: { trace: 'off', launchOptions: { executablePath: chromium } },
+  use: { trace: 'off', launchOptions: existsSync(chromium) ? { executablePath: chromium } : {} },
   projects: [
     { name: 'memory', testIgnore: /supabase-mode/, use: { baseURL: `http://localhost:${PORT}` } },
     { name: 'supabase', testMatch: /supabase-mode/, use: { baseURL: `http://localhost:${PORT_SB}` } },

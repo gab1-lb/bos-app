@@ -155,7 +155,8 @@ select test.throws($$select public.create_deal('[1,2]')$$, '22023', 'create_deal
 select test.as_user('00000000-0000-0000-0000-0000000000e1');
 select test.ok((select count(*) = 0 from public.deals), 'pending: select count(*) from deals = 0');
 select test.ok((select count(*) = 0 from public.activity), 'pending: no activity visible');
-select test.ok((select count(*) = 0 from public.members), 'pending: no members visible');
+select test.ok((select count(*) = 1 and bool_and(status = 'pending') from public.members), 'pending: sees only own member row (status pending)');
+select test.ok((select count(*) = 0 from public.members where id <> '00000000-0000-0000-0000-0000000000e1'), 'pending: no other members visible');
 select test.ok((select count(*) = 0 from public.mandate), 'pending: no mandate visible');
 select test.ok((select count(*) = 0 from public.templates), 'pending: no templates visible');
 select test.ok((select status = 'pending' from public.current_member()), 'pending: current_member() returns own row');
