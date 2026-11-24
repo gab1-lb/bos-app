@@ -393,4 +393,9 @@ export const EN: Record<string, string> = {
   "Endettement à la clôture": "Leverage at closing",
   "Prix demandé / médiane comparables": "Asking price / precedents median",
   "VE/EBITDA demandée rapportée à la médiane": "Asking EV/EBITDA relative to the median",
+  "Se connecter avec Google": "Sign in with Google",
+  "Se déconnecter": "Sign out",
+  "Accueil": "Home",
+  "Votre accès est en attente de validation par un administrateur": "Your access is awaiting approval by an administrator",
+  "Ce compte Google n'est pas autorisé": "This Google account is not authorised",
 };
