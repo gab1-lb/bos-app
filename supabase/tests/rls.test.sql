@@ -35,18 +35,18 @@ insert into public.app_settings (allowed_domain, bootstrap_admin_email)
   values ('bos.example', 'boss@bos.example');
 insert into public.invites (email, role) values ('guest@partner.example', 'associate');
 
-insert into auth.users (id, email, raw_user_meta_data) values
-  ('00000000-0000-0000-0000-0000000000a1', 'Boss@BOS.example', '{"full_name":"The Boss","avatar_url":"https://img/boss.png"}'),
-  ('00000000-0000-0000-0000-0000000000a2', 'guest@partner.example', '{"full_name":"Guest"}'),
-  ('00000000-0000-0000-0000-0000000000b1', 'ana1@bos.example', '{"full_name":"Ana One"}'),
-  ('00000000-0000-0000-0000-0000000000b2', 'ana2@bos.example', '{}'),
-  ('00000000-0000-0000-0000-0000000000c1', 'asso1@bos.example', '{}'),
-  ('00000000-0000-0000-0000-0000000000c2', 'asso2@bos.example', '{}'),
-  ('00000000-0000-0000-0000-0000000000d1', 'reader@bos.example', '{}'),
-  ('00000000-0000-0000-0000-0000000000e1', 'pending@bos.example', '{}'),
-  ('00000000-0000-0000-0000-0000000000f1', 'out@evil.example', '{}'),
-  ('00000000-0000-0000-0000-0000000000f2', 'x@bos.example.evil.example', '{}'),
-  ('00000000-0000-0000-0000-0000000000f3', 'x@evil.example@bos.example', '{}');
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000a1', 'Boss@BOS.example', '{"full_name":"The Boss","avatar_url":"https://img/boss.png"}', now()),
+  ('00000000-0000-0000-0000-0000000000a2', 'guest@partner.example', '{"full_name":"Guest"}', now()),
+  ('00000000-0000-0000-0000-0000000000b1', 'ana1@bos.example', '{"full_name":"Ana One"}', now()),
+  ('00000000-0000-0000-0000-0000000000b2', 'ana2@bos.example', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000c1', 'asso1@bos.example', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000c2', 'asso2@bos.example', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000d1', 'reader@bos.example', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000e1', 'pending@bos.example', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000f1', 'out@evil.example', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000f2', 'x@bos.example.evil.example', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000f3', 'x@evil.example@bos.example', '{}', now());
 
 select test.ok((select status = 'active' and role = 'admin' and name = 'The Boss' and avatar_url = 'https://img/boss.png'
                 from public.members where id = '00000000-0000-0000-0000-0000000000a1'),
@@ -66,6 +66,40 @@ select test.ok((select status = 'denied' from public.members where id = '0000000
 select test.ok((select locale = 'fr' from public.members where id = '00000000-0000-0000-0000-0000000000b1'),
                'signup: default locale fr');
 
+-- unconfirmed e-mails never get an active branch
+insert into public.invites (email, role) values ('late@partner.example', 'analyst');
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000f4', 'boss@bos.example', '{}', null),
+  ('00000000-0000-0000-0000-0000000000f5', 'late@partner.example', '{}', null);
+select test.ok((select status = 'pending' and role is null from public.members where id = '00000000-0000-0000-0000-0000000000f4'),
+               'signup: unconfirmed bootstrap e-mail -> pending (domain matches), not admin');
+select test.ok((select status = 'denied' and role is null from public.members where id = '00000000-0000-0000-0000-0000000000f5'),
+               'signup: unconfirmed invited e-mail outside domain -> denied');
+select test.ok(exists (select 1 from public.invites where email = 'late@partner.example'),
+               'signup: invite not consumed while unconfirmed');
+update auth.users set email_confirmed_at = now() where id = '00000000-0000-0000-0000-0000000000f5';
+select test.ok((select status = 'active' and role = 'analyst' from public.members where id = '00000000-0000-0000-0000-0000000000f5'),
+               'signup: invited e-mail activated once confirmed');
+select test.ok(not exists (select 1 from public.invites where email = 'late@partner.example'),
+               'signup: invite consumed on confirmation');
+update auth.users set email_confirmed_at = null where id = '00000000-0000-0000-0000-0000000000f4';
+update auth.users set raw_user_meta_data = '{"x":1}' where id = '00000000-0000-0000-0000-0000000000f4';
+select test.ok((select status = 'pending' from public.members where id = '00000000-0000-0000-0000-0000000000f4'),
+               'signup: unrelated auth.users update changes nothing');
+
+-- future objects are not auto-granted to clients
+create table public.zz_probe (id int);
+create function public.zz_probe_fn() returns int language sql as 'select 1';
+select test.ok(not has_table_privilege('authenticated', 'public.zz_probe', 'select')
+               and not has_table_privilege('anon', 'public.zz_probe', 'select'),
+               'default privileges: new tables not granted to anon/authenticated');
+select test.ok(not has_function_privilege('anon', 'public.zz_probe_fn()', 'execute')
+               and not has_function_privilege('authenticated', 'public.zz_probe_fn()', 'execute'),
+               'default privileges: new functions not executable by anon/authenticated');
+drop function public.zz_probe_fn();
+drop table public.zz_probe;
+select test.ok(not exists (select 1 from pg_proc where proname = '_touch'), 'unused _touch removed');
+
 -- ---------------------------------------------------------------- admin approves members
 set role authenticated;
 select test.as_user('00000000-0000-0000-0000-0000000000a1');
@@ -74,7 +108,7 @@ update public.members set status = 'active', role = 'analyst'
 update public.members set status = 'active', role = 'associate'
   where id in ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000c2');
 update public.members set status = 'active', role = 'reader' where id = '00000000-0000-0000-0000-0000000000d1';
-select test.ok((select count(*) = 5 from public.members where role in ('analyst', 'associate') and status = 'active'),
+select test.ok((select count(*) = 6 from public.members where role in ('analyst', 'associate') and status = 'active'),
                'admin: can approve members');
 insert into public.invites (email, role) values ('next@partner.example', 'analyst');
 insert into public.mandate (data) values ('{"ebitdaMin":2}');
@@ -210,6 +244,11 @@ select public.validate_bote(:'d3');
 select test.ok((select validated_by = '00000000-0000-0000-0000-0000000000c2' and validated_at is not null
                 from public.deals where id = :'d3'), 'other associate: validate_bote ok, validated_* set');
 select test.ok((select count(*) = 1 from public.activity where deal_id = :'d3' and kind = 'validate'), 'validate_bote: activity logged');
+select test.as_user('00000000-0000-0000-0000-0000000000b1');
+select test.throws(format('select public.set_phase(%L, %L)', :'d3', 'analysis'), '42501', 'analyst: set_phase out of associate_review refused');
+select test.ok((select phase = 'associate_review' and validated_by = '00000000-0000-0000-0000-0000000000c2' and validated_at is not null
+                from public.deals where id = :'d3'), 'analyst: validated_* unchanged after refused set_phase');
+select test.as_user('00000000-0000-0000-0000-0000000000c2');
 select public.set_phase(:'d3', 'committee');
 select test.ok((select validated_by is not null from public.deals where id = :'d3'), 'set_phase forward to committee keeps validation');
 select public.set_phase(:'d3', 'associate_review');
@@ -222,6 +261,11 @@ select public.decide(:'d3', 'go_dd');
 select test.ok((select phase = 'decided' and decision = 'go_dd' and decided_at is not null from public.deals where id = :'d3'),
                'associate: decide sets phase/decision/decided_at');
 select test.ok((select count(*) = 1 from public.activity where deal_id = :'d3' and kind = 'decide'), 'decide: activity logged');
+select test.as_user('00000000-0000-0000-0000-0000000000b1');
+select test.throws(format('select public.set_phase(%L, %L)', :'d3', 'analysis'), '42501', 'analyst: set_phase on a decided deal refused');
+select test.ok((select phase = 'decided' and decision = 'go_dd' and decided_at is not null from public.deals where id = :'d3'),
+               'analyst: decision/decided_at unchanged after refused set_phase');
+select test.as_user('00000000-0000-0000-0000-0000000000c2');
 select public.set_phase(:'d3', 'committee');
 select test.ok((select decision is null and decided_at is null from public.deals where id = :'d3'), 'set_phase out of decided clears decision');
 select public.set_archived(:'d1', true);
@@ -253,6 +297,16 @@ select test.as_user('00000000-0000-0000-0000-0000000000a1');
 select public.create_deal('{"name":"Delta"}') as d5 \gset
 select public.set_phase(:'d5', 'associate_review');
 select test.throws(format('select public.validate_bote(%L)', :'d5'), '42501', 'admin owner: validate_bote refused');
+select test.throws(format('select public.set_owner(%L, %L)', :'d5', '00000000-0000-0000-0000-0000000000c1'), '42501',
+                   'set_owner refused while deal is in associate_review');
+select test.ok((select owner_id = '00000000-0000-0000-0000-0000000000a1' from public.deals where id = :'d5'), 'set_owner: owner unchanged');
+select test.as_user('00000000-0000-0000-0000-0000000000c2');
+select public.validate_bote(:'d5');
+select public.set_phase(:'d5', 'committee');
+select test.as_user('00000000-0000-0000-0000-0000000000a1');
+select public.set_owner(:'d5', '00000000-0000-0000-0000-0000000000c1');
+select test.ok((select owner_id = '00000000-0000-0000-0000-0000000000c1' and validated_by is null and validated_at is null
+                from public.deals where id = :'d5'), 'set_owner clears validated_*');
 select test.ok((select count(*) = 1 from public.app_settings), 'admin: app_settings visible');
 select test.throws(format('select public.patch_deal(%L, %L, %L)', '00000000-0000-0000-0000-00000000dead', '{name}', '"x"'), 'P0002',
                    'patch_deal: unknown deal -> not found');

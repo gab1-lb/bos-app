@@ -26,6 +26,13 @@ describe('can', () => {
     expect(can(a, 'setPhase:bote_written', deal('other'))).toBe(true);
     expect(can(a, 'setPhase:im_received', deal('other'))).toBe(true);
     expect(can(a, 'setPhase:associate_review', deal('other'))).toBe(false);
+    // starting phase must also be an analyst phase
+    for (const phase of ['associate_review', 'committee', 'decided'] as const) {
+      const d = { ...deal('other'), phase };
+      expect(can(a, 'setPhase:analysis', d)).toBe(false);
+      expect(can(a, 'setPhase:im_received', d)).toBe(false);
+    }
+    expect(can(m('associate'), 'setPhase:analysis', { ...deal('other'), phase: 'decided' })).toBe(true);
     expect(can(a, 'validateBote', deal('other'))).toBe(false);
     expect(can(a, 'decide', deal('other'))).toBe(false);
     expect(can(a, 'delete', deal('other'))).toBe(false);

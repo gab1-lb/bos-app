@@ -127,12 +127,6 @@ language sql security definer set search_path = public as $$
   values (p_deal, auth.uid(), p_kind, p_path, p_old, p_new);
 $$;
 
--- Internal: stamp updated_at / updated_by.
-create function public._touch(p_id uuid) returns void
-language sql security definer set search_path = public as $$
-  update public.deals set updated_at = now(), updated_by = auth.uid() where id = p_id;
-$$;
-
 -- =====================================================================================
 -- Deal state functions
 -- =====================================================================================
@@ -220,7 +214,7 @@ begin
 end $$;
 
 -- set_phase: associate/admin to any phase except 'decided' (use decide());
--- analyst only to im_received / analysis / bote_written.
+-- analyst only from and to im_received / analysis / bote_written.
 create function public.set_phase(p_id uuid, p_phase text) returns void
 language plpgsql security definer set search_path = public as $$
 declare d public.deals;
@@ -234,6 +228,11 @@ begin
     raise exception 'permission denied' using errcode = '42501';
   end if;
   d := public._lock_deal(p_id);
+  -- analysts move deals only within phases 1-3: the current phase must be one too
+  if not public.has_role(array['admin', 'associate'])
+     and d.phase not in ('im_received', 'analysis', 'bote_written') then
+    raise exception 'permission denied' using errcode = '42501';
+  end if;
   if d.phase = p_phase then return; end if;
   update public.deals set
     phase = p_phase,
@@ -344,7 +343,8 @@ begin
   perform public._log(p_id, 'contributors', null, to_jsonb(d.contributor_ids), to_jsonb(v_ids));
 end $$;
 
--- set_owner: associate/admin. New owner must be an active analyst/associate/admin.
+-- set_owner: associate/admin, not while in associate_review. New owner must be an active
+-- analyst/associate/admin. Clears validated_* (a validation belongs to the previous owner's BOTe).
 create function public.set_owner(p_id uuid, p_owner uuid) returns void
 language plpgsql security definer set search_path = public as $$
 declare d public.deals;
@@ -355,7 +355,13 @@ begin
     raise exception 'owner must be an active analyst, associate or admin' using errcode = '22023';
   end if;
   d := public._lock_deal(p_id);
-  update public.deals set owner_id = p_owner, updated_at = now(), updated_by = auth.uid() where id = p_id;
+  -- otherwise a senior owner could hand the deal away mid-review and validate their own BOTe
+  if d.phase = 'associate_review' then
+    raise exception 'permission denied: owner cannot change during associate_review' using errcode = '42501';
+  end if;
+  update public.deals set owner_id = p_owner, validated_by = null, validated_at = null,
+    updated_at = now(), updated_by = auth.uid()
+  where id = p_id;
   perform public._log(p_id, 'owner', null, to_jsonb(d.owner_id), to_jsonb(p_owner));
 end $$;
 
@@ -372,45 +378,57 @@ end $$;
 
 -- =====================================================================================
 -- Signup: one members row per auth.users insert
---   bootstrap_admin_email -> active admin; invited -> active + invite role (invite consumed);
---   allowed_domain -> pending; anything else -> denied. E-mail comparison is case-insensitive.
+--   Active branches need a confirmed e-mail (email_confirmed_at not null):
+--     bootstrap_admin_email -> active admin; invited -> active + invite role (invite consumed).
+--   Otherwise: allowed_domain -> pending; anything else -> denied.
+--   E-mail comparison is case-insensitive. When an unconfirmed user later confirms, the
+--   active branches are re-evaluated (never downgrades an existing member).
 -- =====================================================================================
+
+-- Internal: decide role/status for an e-mail. Does not consume the invite.
+create function public._signup_status(p_email text, p_confirmed boolean, out role text, out status text, out invited boolean)
+language plpgsql stable security definer set search_path = public as $$
+declare
+  v_email text := lower(trim(coalesce(p_email, '')));
+  v_domain text := case when v_email ~ '^[^@\s]+@[^@\s]+$' then split_part(v_email, '@', 2) end;
+  s public.app_settings;
+  v_invite public.invites;
+begin
+  select * into s from public.app_settings where id = 1;
+  select * into v_invite from public.invites where email = v_email;
+  invited := false;
+  if v_domain is not null and p_confirmed and s.bootstrap_admin_email is not null
+     and v_email = lower(trim(s.bootstrap_admin_email)) then
+    role := 'admin'; status := 'active';
+  elsif v_domain is not null and p_confirmed and v_invite.email is not null then
+    role := v_invite.role; status := 'active'; invited := true;
+  elsif v_domain is not null and s.allowed_domain is not null
+        and v_domain = lower(trim(s.allowed_domain)) then
+    role := null; status := 'pending';
+  else
+    role := null; status := 'denied';
+  end if;
+end $$;
 
 create function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
   v_email text := lower(trim(coalesce(new.email, '')));
-  v_domain text := case when v_email ~ '^[^@\s]+@[^@\s]+$' then split_part(v_email, '@', 2) end;
   v_meta jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
-  s public.app_settings;
-  v_invite public.invites;
-  v_role text;
-  v_status text;
+  r record;
 begin
-  select * into s from public.app_settings where id = 1;
-  select * into v_invite from public.invites where email = v_email;
-
-  if v_domain is not null and s.bootstrap_admin_email is not null
-     and v_email = lower(trim(s.bootstrap_admin_email)) then
-    v_role := 'admin'; v_status := 'active';
-  elsif v_domain is not null and v_invite.email is not null then
-    v_role := v_invite.role; v_status := 'active';
+  r := public._signup_status(v_email, new.email_confirmed_at is not null);
+  if r.invited then
     delete from public.invites where email = v_email;
-  elsif v_domain is not null and s.allowed_domain is not null
-        and v_domain = lower(trim(s.allowed_domain)) then
-    v_role := null; v_status := 'pending';
-  else
-    v_role := null; v_status := 'denied';
   end if;
-
   insert into public.members (id, email, name, avatar_url, role, status)
   values (
     new.id,
     v_email,
     coalesce(nullif(v_meta ->> 'full_name', ''), nullif(v_meta ->> 'name', ''), split_part(v_email, '@', 1)),
     nullif(v_meta ->> 'avatar_url', ''),
-    v_role,
-    v_status
+    r.role,
+    r.status
   )
   on conflict (id) do nothing;
   return new;
@@ -419,6 +437,30 @@ end $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- E-mail confirmed after signup: grant the bootstrap/invite outcome to a non-active member.
+create function public.handle_user_confirmed() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  v_email text := lower(trim(coalesce(new.email, '')));
+  r record;
+begin
+  r := public._signup_status(v_email, true);
+  if r.status = 'active' then
+    update public.members set role = r.role, status = 'active'
+      where id = new.id and status <> 'active';
+    if found and r.invited then
+      delete from public.invites where email = v_email;
+    end if;
+  end if;
+  return new;
+end $$;
+
+create trigger on_auth_user_confirmed
+  after update of email_confirmed_at on auth.users
+  for each row
+  when (old.email_confirmed_at is null and new.email_confirmed_at is not null)
+  execute function public.handle_user_confirmed();
 
 -- Stamp who wrote admin-managed rows (not spoofable by the client).
 create function public.stamp_invited_by() returns trigger
@@ -490,6 +532,13 @@ grant select, insert, update, delete on public.invites, public.mandate, public.t
 grant update (role, status) on public.members to authenticated;
 
 revoke execute on all functions in schema public from public, anon, authenticated;
+
+-- Objects created later by this role are not auto-granted to clients either.
+alter default privileges in schema public revoke all on tables from anon, authenticated;
+alter default privileges in schema public revoke all on sequences from anon, authenticated;
+alter default privileges in schema public revoke execute on functions from anon, authenticated;
+-- The built-in PUBLIC EXECUTE default can only be revoked globally (not per schema).
+alter default privileges revoke execute on functions from public;
 grant execute on function
   public.current_member(),
   public.has_role(text[]),
