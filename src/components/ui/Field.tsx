@@ -115,7 +115,7 @@ export function DateInput({ id, label, value, onCommit, readOnly }: Omit<Base, '
   useEffect(() => { if (!focused) setText(display); }, [display, focused]);
   const commit = (v: string) => { if (v !== display && (v === '' || /^\d{4}-\d{2}-\d{2}$/.test(v))) onCommit(v || null); };
   return (
-    <input type="date" id={id} className="in" value={text} aria-label={label} readOnly={readOnly}
+    <input type="date" id={id} className="in" value={text} aria-label={label} disabled={readOnly}
       onFocus={() => setFocused(true)}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => { setFocused(false); commit(text); }} />

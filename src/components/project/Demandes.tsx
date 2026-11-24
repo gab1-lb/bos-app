@@ -10,7 +10,7 @@ import { Chip } from '../ui/Chip';
 import { DateInput, Field, Select, TextInput } from '../ui/Field';
 import { Icon } from '../ui/Icon';
 import { Reveal } from '../ui/Reveal';
-import { missingQuestions } from './compute';
+import { missingQuestions, withAnswered, withSent } from './compute';
 import { useBind, useProject } from './ProjectContext';
 
 const CATS = ['Financier', 'Commercial', 'Produit', 'Juridique', 'RH', 'Fiscal', 'IT'];
@@ -44,12 +44,10 @@ export function Demandes() {
     return <Chip tone={w.level === 'late' ? 'amber' : 'bad'}>{t('{0} j de retard', w.days)}</Chip>;
   };
   const setSent = (i: number, q: Question, v: string | null) => {
-    patch(['questions', String(i), 'sentAt'], v);
-    if (v && q.status === 'Ouverte') patch(['questions', String(i), 'status'], 'Envoyée');
+    patch(['questions', String(i)], withSent(q, v));
   };
-  const setAnswered = (i: number, v: string | null) => {
-    patch(['questions', String(i), 'answeredAt'], v);
-    if (v) patch(['questions', String(i), 'status'], 'Répondue');
+  const setAnswered = (i: number, q: Question, v: string | null) => {
+    patch(['questions', String(i)], withAnswered(q, v));
   };
 
   return (
@@ -131,7 +129,7 @@ export function Demandes() {
                           options={[['', '—'], ...RECIPIENTS.map((r): [Recipient, string] => [r, recipientLabel(locale, r)])]} />
                       </td>
                       <td><DateInput {...sent} value={q.sentAt} onCommit={(v) => setSent(i, q, v)} /></td>
-                      <td><DateInput {...ans} value={q.answeredAt} onCommit={(v) => setAnswered(i, v)} /></td>
+                      <td><DateInput {...ans} value={q.answeredAt} onCommit={(v) => setAnswered(i, q, v)} /></td>
                       <td>{lateness(i, q)}</td>
                       <td>{editable && <button type="button" className="iconbtn" aria-label={t('Supprimer')} onClick={() => setQs(qs.filter((_, j) => j !== i))}><Icon name="x" /></button>}</td>
                     </tr>

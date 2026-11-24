@@ -1,7 +1,7 @@
 /* Calculs partagés par les onglets du projet (port de compute / ffRows / missingQuestions de legacy/app.js). */
 import { N, base, comps, dcf, maxPrice, returns } from '../../engine/finance';
 import { screen } from '../../engine/screen';
-import type { Base, CompsResult, Dcf, Deal, Mandate, Returns, Screen } from '../../engine/types';
+import type { Base, CompsResult, Dcf, Deal, Mandate, Question, Returns, Screen } from '../../engine/types';
 
 export type ValKind = 'evEbitda' | 'evRev' | 'dcf' | 'maxPrice';
 export type ValRow = { kind: ValKind; lo: number; mid: number; hi: number };
@@ -80,4 +80,16 @@ export function setIn<T>(obj: T, path: string[], value: unknown): T {
   const copy = (Array.isArray(obj) ? [...(obj as unknown[])] : { ...src }) as Record<string, unknown>;
   copy[k] = setIn(src?.[k], rest, value);
   return copy as T;
+}
+
+/** Question with a new sent date; the status follows (Ouverte ↔ Envoyée) unless already answered. */
+export function withSent(q: Question, sentAt: string | null): Question {
+  const status = q.answeredAt ? q.status : sentAt ? (q.status === 'Ouverte' ? 'Envoyée' : q.status) : 'Ouverte';
+  return { ...q, sentAt, status };
+}
+
+/** Question with a new answer date; clearing it falls back to Envoyée (sent) or Ouverte. */
+export function withAnswered(q: Question, answeredAt: string | null): Question {
+  const status = answeredAt ? 'Répondue' : q.sentAt ? 'Envoyée' : 'Ouverte';
+  return { ...q, answeredAt, status };
 }

@@ -33,8 +33,8 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
     setRepo(r);
     let live = true;
     r.me().then((m) => { if (live) setMe(m); }).catch(() => {});
-    if (isMemoryMode()) {
-      // E2E hook, memory mode only.
+    if (process.env.NEXT_PUBLIC_DATA_MODE === 'memory') {
+      // E2E hook, memory mode only (literal check so production builds drop it).
       const w = window as unknown as { __bosRepo?: Repo; __bosGo?: (p: string) => void };
       w.__bosRepo = r;
       w.__bosGo = (p: string) => router.push(p);

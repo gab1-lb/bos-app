@@ -61,10 +61,12 @@ export function ProjectProvider({ id, children }: { id: string; children: ReactN
     void reload();
   }, [toast, t, reload]);
 
+  const editable = !!me && !!rec && can(me, 'edit', rec.meta);
   const patch = useCallback((path: string[], value: unknown) => {
+    if (!editable) return;
     setRec((r) => (r ? { ...r, deal: setIn(r.deal, path, value) } : r));
     repo.patchDeal(id, path, value).catch(fail);
-  }, [repo, id, fail]);
+  }, [repo, id, fail, editable]);
 
   const act = useCallback(async (fn: (repo: Repo, id: string) => Promise<void>) => {
     try { await fn(repo, id); await reload(); } catch (e) { fail(e); }
@@ -77,7 +79,7 @@ export function ProjectProvider({ id, children }: { id: string; children: ReactN
 
   const value: ProjectCtx = {
     ...rec, id, mandate: mandate!, c: c!, me, members,
-    editable: !!me && can(me, 'edit', rec.meta),
+    editable,
     patch, act,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

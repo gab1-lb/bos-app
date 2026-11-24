@@ -89,6 +89,10 @@ test('un lecteur voit les champs en lecture seule', async ({ page }) => {
   await page.goto('/login?as=reader');
   await page.goto(`/projet/${DEMO}/financiers`);
   await expect(page.getByLabel('VE demandée (100 %)')).toHaveAttribute('readonly', '');
+  await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Demandes d’infos' }).click();
+  await expect(page.locator('[id="f-questions.0.sentAt"]')).toBeDisabled();
+  await expect(page.locator('[id="f-questions.0.answeredAt"]')).toBeDisabled();
+  await expect(page.getByLabel('Date de comité')).toBeDisabled();
 });
 
 test('demandes : destinataire, dates et retard', async ({ page }) => {
@@ -98,6 +102,11 @@ test('demandes : destinataire, dates et retard', async ({ page }) => {
   await first.getByLabel('Envoyée le').fill('2020-01-01');
   await first.getByLabel('Envoyée le').blur();
   await expect(first.getByText(/j de retard/)).toBeVisible();
+  await expect(first.getByLabel('Statut')).toHaveValue('Envoyée');
+  await first.getByLabel('Envoyée le').fill('');
+  await first.getByLabel('Envoyée le').blur();
+  await expect(first.getByLabel('Statut')).toHaveValue('Ouverte');
+  await expect(first.getByText(/j de retard/)).toHaveCount(0);
   await openTab(page, 'Activité');
-  await expect(page.getByText('questions.0.sentAt')).toBeVisible();
+  await expect(page.getByText('questions.0', { exact: true }).first()).toBeVisible();
 });
