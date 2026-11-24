@@ -1,0 +1,262 @@
+-- RLS / permission / signup tests. Run by scripts/test-sql.sh (psql, ON_ERROR_STOP=1).
+-- Every assertion raises 'FAIL: ...' on failure, which aborts the run with a non-zero exit.
+-- Users are simulated with `set role authenticated` + `set test.uid` so RLS really applies.
+\o /dev/null
+set client_min_messages = notice;
+
+-- ---------------------------------------------------------------- helpers (as owner)
+create schema test;
+grant usage on schema test to anon, authenticated;
+
+create function test.ok(p_cond boolean, p_label text) returns void language plpgsql as $$
+begin
+  if p_cond is distinct from true then raise exception 'FAIL: %', p_label; end if;
+  raise notice 'ok: %', p_label;
+end $$;
+
+create function test.throws(p_sql text, p_state text, p_label text) returns void language plpgsql as $$
+begin
+  begin
+    execute p_sql;
+  exception when others then
+    if sqlstate = p_state then raise notice 'ok: % (%)', p_label, sqlstate; return; end if;
+    raise exception 'FAIL: % (expected %, got %: %)', p_label, p_state, sqlstate, sqlerrm;
+  end;
+  raise exception 'FAIL: % (no error raised)', p_label;
+end $$;
+
+create function test.as_user(p_uid uuid) returns void language sql as $$
+  select set_config('test.uid', coalesce(p_uid::text, ''), false);
+$$;
+grant execute on all functions in schema test to anon, authenticated;
+
+-- ---------------------------------------------------------------- signup
+insert into public.app_settings (allowed_domain, bootstrap_admin_email)
+  values ('bos.example', 'boss@bos.example');
+insert into public.invites (email, role) values ('guest@partner.example', 'associate');
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-0000000000a1', 'Boss@BOS.example', '{"full_name":"The Boss","avatar_url":"https://img/boss.png"}'),
+  ('00000000-0000-0000-0000-0000000000a2', 'guest@partner.example', '{"full_name":"Guest"}'),
+  ('00000000-0000-0000-0000-0000000000b1', 'ana1@bos.example', '{"full_name":"Ana One"}'),
+  ('00000000-0000-0000-0000-0000000000b2', 'ana2@bos.example', '{}'),
+  ('00000000-0000-0000-0000-0000000000c1', 'asso1@bos.example', '{}'),
+  ('00000000-0000-0000-0000-0000000000c2', 'asso2@bos.example', '{}'),
+  ('00000000-0000-0000-0000-0000000000d1', 'reader@bos.example', '{}'),
+  ('00000000-0000-0000-0000-0000000000e1', 'pending@bos.example', '{}'),
+  ('00000000-0000-0000-0000-0000000000f1', 'out@evil.example', '{}'),
+  ('00000000-0000-0000-0000-0000000000f2', 'x@bos.example.evil.example', '{}'),
+  ('00000000-0000-0000-0000-0000000000f3', 'x@evil.example@bos.example', '{}');
+
+select test.ok((select status = 'active' and role = 'admin' and name = 'The Boss' and avatar_url = 'https://img/boss.png'
+                from public.members where id = '00000000-0000-0000-0000-0000000000a1'),
+               'signup: bootstrap e-mail (case-insensitive) -> admin active, name/avatar from metadata');
+select test.ok((select status = 'active' and role = 'associate' from public.members where id = '00000000-0000-0000-0000-0000000000a2'),
+               'signup: invited e-mail -> active with invite role');
+select test.ok(not exists (select 1 from public.invites where email = 'guest@partner.example'),
+               'signup: invite consumed');
+select test.ok((select status = 'pending' and role is null from public.members where id = '00000000-0000-0000-0000-0000000000e1'),
+               'signup: allowed-domain e-mail -> pending, no role');
+select test.ok((select status = 'denied' and role is null from public.members where id = '00000000-0000-0000-0000-0000000000f1'),
+               'signup: out-of-domain e-mail -> denied');
+select test.ok((select status = 'denied' from public.members where id = '00000000-0000-0000-0000-0000000000f2'),
+               'signup: look-alike domain suffix -> denied');
+select test.ok((select status = 'denied' from public.members where id = '00000000-0000-0000-0000-0000000000f3'),
+               'signup: malformed e-mail with two @ -> denied');
+select test.ok((select locale = 'fr' from public.members where id = '00000000-0000-0000-0000-0000000000b1'),
+               'signup: default locale fr');
+
+-- ---------------------------------------------------------------- admin approves members
+set role authenticated;
+select test.as_user('00000000-0000-0000-0000-0000000000a1');
+update public.members set status = 'active', role = 'analyst'
+  where id in ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000b2');
+update public.members set status = 'active', role = 'associate'
+  where id in ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000c2');
+update public.members set status = 'active', role = 'reader' where id = '00000000-0000-0000-0000-0000000000d1';
+select test.ok((select count(*) = 5 from public.members where role in ('analyst', 'associate') and status = 'active'),
+               'admin: can approve members');
+insert into public.invites (email, role) values ('next@partner.example', 'analyst');
+insert into public.mandate (data) values ('{"ebitdaMin":2}');
+update public.mandate set data = '{"ebitdaMin":3}';
+insert into public.templates (key, locale, subject, body) values ('info_request', 'fr', 'S', 'B');
+select test.ok((select count(*) = 1 from public.invites), 'admin: can write invites');
+select test.ok((select data->>'ebitdaMin' = '3' from public.mandate), 'admin: can write mandate');
+
+-- ---------------------------------------------------------------- analyst ana1 creates deals
+select test.as_user('00000000-0000-0000-0000-0000000000b1');
+select public.create_deal('{"name":"Alpha","kpi":{}}') as d1 \gset
+select public.create_deal('{"name":"Bravo","kpi":{}}') as d2 \gset
+select test.ok((select owner_id = '00000000-0000-0000-0000-0000000000b1' and phase = 'im_received'
+                and phase_entered_at is not null and not archived and data->>'id' = id::text
+                and updated_by = '00000000-0000-0000-0000-0000000000b1'
+                from public.deals where id = :'d1'),
+               'create_deal: owner = caller, phase im_received, data.id = row id');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d1' and kind = 'create'),
+               'create_deal: activity logged');
+select test.throws($$select public.create_deal('[1,2]')$$, '22023', 'create_deal: non-object data rejected');
+
+-- ---------------------------------------------------------------- pending / denied / anon see nothing
+select test.as_user('00000000-0000-0000-0000-0000000000e1');
+select test.ok((select count(*) = 0 from public.deals), 'pending: select count(*) from deals = 0');
+select test.ok((select count(*) = 0 from public.activity), 'pending: no activity visible');
+select test.ok((select count(*) = 0 from public.members), 'pending: no members visible');
+select test.ok((select count(*) = 0 from public.mandate), 'pending: no mandate visible');
+select test.ok((select count(*) = 0 from public.templates), 'pending: no templates visible');
+select test.ok((select status = 'pending' from public.current_member()), 'pending: current_member() returns own row');
+select test.ok(not public.has_role(array['admin','associate','analyst','reader']), 'pending: has_role false');
+select test.throws($$select public.create_deal('{"name":"x"}')$$, '42501', 'pending: create_deal refused');
+select test.throws(format('select public.patch_deal(%L, %L, %L)', :'d1', '{name}', '"x"'), '42501', 'pending: patch_deal refused');
+select test.throws($$select public.set_my_locale('en')$$, '42501', 'pending: set_my_locale refused');
+
+select test.as_user('00000000-0000-0000-0000-0000000000f1');
+select test.ok((select count(*) = 0 from public.deals), 'denied: no deals visible');
+select test.throws(format('select public.patch_deal(%L, %L, %L)', :'d1', '{name}', '"x"'), '42501', 'denied: patch_deal refused');
+
+select test.as_user(null);
+select test.ok((select count(*) = 0 from public.deals), 'authenticated without uid: no deals visible');
+reset role;
+set role anon;
+select test.throws($$select count(*) from public.deals$$, '42501', 'anon: deals not readable at all');
+select test.throws($$select count(*) from public.members$$, '42501', 'anon: members not readable at all');
+select test.throws($$select public.create_deal('{"name":"x"}')$$, '42501', 'anon: create_deal not executable');
+reset role;
+
+-- ---------------------------------------------------------------- reader
+set role authenticated;
+select test.as_user('00000000-0000-0000-0000-0000000000d1');
+select test.ok((select count(*) = 2 from public.deals), 'reader: sees deals');
+select test.ok((select count(*) >= 2 from public.activity), 'reader: sees activity');
+select test.ok((select count(*) = 1 from public.mandate), 'reader: sees mandate');
+select test.ok((select count(*) >= 8 from public.members), 'reader: sees members');
+select test.throws(format('select public.patch_deal(%L, %L, %L)', :'d1', '{name}', '"x"'), '42501', 'reader: patch_deal refused');
+select test.throws($$select public.create_deal('{"name":"x"}')$$, '42501', 'reader: create_deal refused');
+select test.throws(format('select public.set_phase(%L, %L)', :'d1', 'analysis'), '42501', 'reader: set_phase refused');
+select test.throws(format('select public.set_committee_date(%L, %L)', :'d1', '2026-12-01'), '42501', 'reader: set_committee_date refused');
+select public.set_my_locale('en');
+select test.ok((select locale = 'en' from public.current_member()), 'reader: set_my_locale(en) ok');
+select test.throws($$select public.set_my_locale('de')$$, '22023', 'set_my_locale: unknown locale rejected');
+
+-- ---------------------------------------------------------------- analyst ana2 on ana1's deal
+select test.as_user('00000000-0000-0000-0000-0000000000b2');
+select public.patch_deal(:'d1', '{kpi,churn}', '5');
+select public.patch_deal(:'d1', '{kpi,top10}', '40');
+select test.ok((select data->'kpi' = '{"churn":5,"top10":40}'::jsonb from public.deals where id = :'d1'),
+               'patch_deal: two successive patches on {kpi,churn} and {kpi,top10} both present');
+select test.ok((select updated_by = '00000000-0000-0000-0000-0000000000b2' and updated_at is not null
+                from public.deals where id = :'d1'), 'patch_deal: updated_by/updated_at set');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d1' and kind = 'patch'
+                and path = 'kpi.churn' and old_value is null and new_value = '5'::jsonb
+                and actor_id = '00000000-0000-0000-0000-0000000000b2'),
+               'patch_deal: activity row with path, old and new value');
+select public.patch_deal(:'d1', '{kpi,churn}', '6');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d1' and kind = 'patch'
+                and path = 'kpi.churn' and old_value = '5'::jsonb and new_value = '6'::jsonb),
+               'patch_deal: old_value captured');
+select test.ok((select data->>'id' = id::text from public.deals where id = :'d1'), 'patch_deal: data.id unchanged');
+select test.throws(format('select public.patch_deal(%L, %L, %L)', :'d1', '{id}', '"other"'), '22023', 'patch_deal: data.id is immutable');
+select test.throws(format('select public.patch_deal(%L, %L, %L)', :'d1', '{}', '{}'), '22023', 'patch_deal: empty path rejected');
+
+select test.throws(format('select public.validate_bote(%L)', :'d1'), '42501', 'analyst: validate_bote refused');
+select test.throws(format('select public.set_phase(%L, %L)', :'d1', 'associate_review'), '42501', 'analyst: set_phase associate_review refused');
+select test.throws(format('select public.set_phase(%L, %L)', :'d1', 'committee'), '42501', 'analyst: set_phase committee refused');
+select test.throws(format('select public.decide(%L, %L)', :'d1', 'go_dd'), '42501', 'analyst: decide refused');
+select test.throws(format('select public.delete_deal(%L)', :'d1'), '42501', 'analyst: delete_deal refused');
+select test.throws(format('select public.set_archived(%L, true)', :'d1'), '42501', 'analyst: archive of a deal owned by someone else refused');
+select test.throws(format('select public.set_owner(%L, %L)', :'d1', '00000000-0000-0000-0000-0000000000b2'), '42501', 'analyst: set_owner refused');
+select test.throws($$select public.import_deal('{"name":"I"}', '{}')$$, '42501', 'analyst: import_deal refused');
+select public.set_phase(:'d1', 'analysis');
+select public.set_phase(:'d1', 'bote_written');
+select test.ok((select phase = 'bote_written' from public.deals where id = :'d1'), 'analyst: set_phase to analyst phases ok');
+select test.ok((select count(*) = 2 from public.activity where deal_id = :'d1' and kind = 'phase'), 'set_phase: activity logged');
+select test.throws(format('select public.set_phase(%L, %L)', :'d1', 'nonsense'), '22023', 'set_phase: unknown phase rejected');
+select public.set_committee_date(:'d1', '2026-12-15');
+select test.ok((select committee_date = '2026-12-15' from public.deals where id = :'d1'), 'analyst: set_committee_date ok');
+select public.set_contributors(:'d1', array['00000000-0000-0000-0000-0000000000b2']::uuid[]);
+select test.ok((select contributor_ids = array['00000000-0000-0000-0000-0000000000b2']::uuid[] from public.deals where id = :'d1'),
+               'analyst: set_contributors ok');
+select test.throws(format('select public.set_contributors(%L, %L)', :'d1', '{00000000-0000-0000-0000-00000000ffff}'), '22023',
+                   'set_contributors: unknown member rejected');
+
+-- direct writes are refused
+select test.throws($$insert into public.deals (data) values ('{"name":"Direct"}')$$, '42501', 'analyst: direct insert into deals refused');
+select test.throws(format('update public.deals set phase = %L where id = %L', 'decided', :'d1'), '42501', 'analyst: direct update of deals refused');
+select test.throws(format('delete from public.deals where id = %L', :'d1'), '42501', 'analyst: direct delete from deals refused');
+select test.throws(format('insert into public.activity (deal_id, kind) values (%L, %L)', :'d1', 'patch'), '42501', 'analyst: direct insert into activity refused');
+update public.members set role = 'admin' where id = '00000000-0000-0000-0000-0000000000b2';
+select test.ok((select role = 'analyst' from public.current_member()), 'analyst: update of members has no effect (RLS)');
+select test.throws($$update public.members set name = 'x' where id = '00000000-0000-0000-0000-0000000000b2'$$, '42501', 'analyst: members.name not updatable');
+select test.throws($$insert into public.invites (email, role) values ('a@b.c', 'admin')$$, '42501', 'analyst: cannot write invites');
+update public.mandate set data = '{}';
+select test.ok((select data->>'ebitdaMin' = '3' from public.mandate), 'analyst: update of mandate has no effect (RLS)');
+select test.throws($$insert into public.templates (key, locale, subject, body) values ('k', 'fr', 's', 'b')$$, '42501', 'analyst: cannot write templates');
+select test.ok((select count(*) = 0 from public.app_settings), 'analyst: app_settings not visible');
+
+-- analyst archives own deal
+select test.as_user('00000000-0000-0000-0000-0000000000b1');
+select public.set_archived(:'d2', true);
+select test.ok((select archived from public.deals where id = :'d2'), 'analyst: archive own deal ok');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d2' and kind = 'archive'), 'set_archived: activity logged');
+select public.set_archived(:'d2', false);
+
+-- ---------------------------------------------------------------- associates
+select test.as_user('00000000-0000-0000-0000-0000000000c1');
+select public.create_deal('{"name":"Charlie","kpi":{}}') as d3 \gset
+select test.throws(format('select public.validate_bote(%L)', :'d3'), '22023', 'validate_bote: refused outside associate_review');
+select public.set_phase(:'d3', 'associate_review');
+select test.throws(format('select public.validate_bote(%L)', :'d3'), '42501', 'associate owner: validate_bote refused');
+select test.as_user('00000000-0000-0000-0000-0000000000c2');
+select public.validate_bote(:'d3');
+select test.ok((select validated_by = '00000000-0000-0000-0000-0000000000c2' and validated_at is not null
+                from public.deals where id = :'d3'), 'other associate: validate_bote ok, validated_* set');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d3' and kind = 'validate'), 'validate_bote: activity logged');
+select public.set_phase(:'d3', 'committee');
+select test.ok((select validated_by is not null from public.deals where id = :'d3'), 'set_phase forward to committee keeps validation');
+select public.set_phase(:'d3', 'associate_review');
+select public.set_phase(:'d3', 'analysis');
+select test.ok((select validated_by is null and validated_at is null and phase = 'analysis'
+                from public.deals where id = :'d3'), 'set_phase back before associate_review clears validated_*');
+select test.throws(format('select public.set_phase(%L, %L)', :'d3', 'decided'), '22023', 'set_phase: decided only via decide()');
+select test.throws(format('select public.decide(%L, %L)', :'d3', 'maybe'), '22023', 'decide: unknown decision rejected');
+select public.decide(:'d3', 'go_dd');
+select test.ok((select phase = 'decided' and decision = 'go_dd' and decided_at is not null from public.deals where id = :'d3'),
+               'associate: decide sets phase/decision/decided_at');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d3' and kind = 'decide'), 'decide: activity logged');
+select public.set_phase(:'d3', 'committee');
+select test.ok((select decision is null and decided_at is null from public.deals where id = :'d3'), 'set_phase out of decided clears decision');
+select public.set_archived(:'d1', true);
+select test.ok((select archived from public.deals where id = :'d1'), 'associate: can archive any deal');
+select public.set_archived(:'d1', false);
+select public.set_owner(:'d1', '00000000-0000-0000-0000-0000000000b2');
+select test.ok((select owner_id = '00000000-0000-0000-0000-0000000000b2' from public.deals where id = :'d1'), 'associate: set_owner ok');
+select test.throws(format('select public.set_owner(%L, %L)', :'d1', '00000000-0000-0000-0000-0000000000d1'), '22023',
+                   'set_owner: reader cannot own a deal');
+select test.throws($$insert into public.invites (email, role) values ('a@b.c', 'analyst')$$, '42501', 'associate: cannot write invites');
+update public.members set role = 'admin' where id = '00000000-0000-0000-0000-0000000000c2';
+select test.ok((select role = 'associate' from public.current_member()), 'associate: update of own member row has no effect (RLS)');
+
+select public.import_deal('{"name":"Imported","id":"legacy-1"}',
+  '{"phase":"decided","decision":"no_go","decidedAt":"2025-01-02T00:00:00Z","phaseEnteredAt":"2025-01-02T00:00:00Z","ownerId":"00000000-0000-0000-0000-0000000000b1"}') as d4 \gset
+select test.ok((select phase = 'decided' and decision = 'no_go' and decided_at = '2025-01-02T00:00:00Z'
+                and owner_id = '00000000-0000-0000-0000-0000000000c2' and data->>'id' = id::text
+                from public.deals where id = :'d4'), 'associate: import_deal keeps phase/decision, owner = importer');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d4' and kind = 'import'), 'import_deal: activity logged');
+select test.throws($$select public.import_deal('{"name":"I"}', '{"phase":"bogus"}')$$, '22023', 'import_deal: bad phase rejected');
+
+select public.delete_deal(:'d4');
+select test.ok(not exists (select 1 from public.deals where id = :'d4'), 'associate: delete_deal ok');
+select test.ok((select count(*) = 1 from public.activity where kind = 'delete' and old_value->>'id' = :'d4'),
+               'delete_deal: activity logged');
+
+-- ---------------------------------------------------------------- admin: same senior rules
+select test.as_user('00000000-0000-0000-0000-0000000000a1');
+select public.create_deal('{"name":"Delta"}') as d5 \gset
+select public.set_phase(:'d5', 'associate_review');
+select test.throws(format('select public.validate_bote(%L)', :'d5'), '42501', 'admin owner: validate_bote refused');
+select test.ok((select count(*) = 1 from public.app_settings), 'admin: app_settings visible');
+select test.throws(format('select public.patch_deal(%L, %L, %L)', '00000000-0000-0000-0000-00000000dead', '{name}', '"x"'), 'P0002',
+                   'patch_deal: unknown deal -> not found');
+reset role;
+
+\o
+\echo 'rls.test.sql: all assertions passed'
