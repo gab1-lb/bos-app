@@ -117,6 +117,27 @@ insert into public.templates (key, locale, subject, body) values ('info_request'
 select test.ok((select count(*) = 1 from public.invites), 'admin: can write invites');
 select test.ok((select data->>'ebitdaMin' = '3' from public.mandate), 'admin: can write mandate');
 
+-- an admin decision is not overridden by a later e-mail confirmation
+reset role;
+insert into public.invites (email, role) values ('newbie@bos.example', 'analyst');
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000f6', 'newbie@bos.example', '{}', null);
+select test.ok((select status = 'pending' and not status_locked from public.members where id = '00000000-0000-0000-0000-0000000000f6'),
+               'signup: unconfirmed in-domain invitee -> pending, unlocked');
+set role authenticated;
+select test.as_user('00000000-0000-0000-0000-0000000000a1');
+update public.members set status = 'denied' where id = '00000000-0000-0000-0000-0000000000f6';
+select test.throws($$update public.members set status_locked = false where id = '00000000-0000-0000-0000-0000000000f6'$$, '42501',
+                   'admin: status_locked not directly writable');
+reset role;
+select test.ok((select status = 'denied' and status_locked from public.members where id = '00000000-0000-0000-0000-0000000000f6'),
+               'admin status change locks the member');
+update auth.users set email_confirmed_at = now() where id = '00000000-0000-0000-0000-0000000000f6';
+select test.ok((select status = 'denied' and role is null from public.members where id = '00000000-0000-0000-0000-0000000000f6'),
+               'confirmation does not override an admin denial (locked member stays denied)');
+set role authenticated;
+select test.as_user('00000000-0000-0000-0000-0000000000a1');
+
 -- ---------------------------------------------------------------- analyst ana1 creates deals
 select test.as_user('00000000-0000-0000-0000-0000000000b1');
 select public.create_deal('{"name":"Alpha","kpi":{}}') as d1 \gset

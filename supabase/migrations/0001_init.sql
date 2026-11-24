@@ -28,6 +28,8 @@ create table public.members (
   role text check (role in ('admin', 'associate', 'analyst', 'reader')),
   status text not null default 'pending' check (status in ('pending', 'active', 'denied')),
   locale text not null default 'fr' check (locale in ('fr', 'en')),
+  -- true once role/status was set by a person (admin); automatic signup rules then leave it alone
+  status_locked boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -448,7 +450,7 @@ begin
   r := public._signup_status(v_email, true);
   if r.status = 'active' then
     update public.members set role = r.role, status = 'active'
-      where id = new.id and status <> 'active';
+      where id = new.id and status <> 'active' and not status_locked;
     if found and r.invited then
       delete from public.invites where email = v_email;
     end if;
@@ -461,6 +463,22 @@ create trigger on_auth_user_confirmed
   for each row
   when (old.email_confirmed_at is null and new.email_confirmed_at is not null)
   execute function public.handle_user_confirmed();
+
+-- Any role/status change not made by the signup triggers (an admin through the API, or SQL
+-- by hand) locks the member, so a later e-mail confirmation cannot override that decision.
+-- pg_trigger_depth() > 1 means the update comes from inside another trigger
+-- (handle_user_confirmed on auth.users); clients cannot reach that depth.
+create function public.lock_member_status() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if (new.role is distinct from old.role or new.status is distinct from old.status)
+     and pg_trigger_depth() <= 1 then
+    new.status_locked := true;
+  end if;
+  return new;
+end $$;
+create trigger members_lock_status before update on public.members
+  for each row execute function public.lock_member_status();
 
 -- Stamp who wrote admin-managed rows (not spoofable by the client).
 create function public.stamp_invited_by() returns trigger
@@ -538,6 +556,11 @@ alter default privileges in schema public revoke all on tables from anon, authen
 alter default privileges in schema public revoke all on sequences from anon, authenticated;
 alter default privileges in schema public revoke execute on functions from anon, authenticated;
 -- The built-in PUBLIC EXECUTE default can only be revoked globally (not per schema).
+-- WARNING: from here on, EVERY function created later by this role (postgres on Supabase),
+-- in ANY schema, including functions created by extensions installed by postgres, is NOT
+-- executable by clients until an explicit
+--   grant execute on function <schema>.<fn>(<args>) to authenticated;
+-- is added in the migration that creates it.
 alter default privileges revoke execute on functions from public;
 grant execute on function
   public.current_member(),

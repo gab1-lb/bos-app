@@ -33,6 +33,9 @@ describe('can', () => {
       expect(can(a, 'setPhase:im_received', d)).toBe(false);
     }
     expect(can(m('associate'), 'setPhase:analysis', { ...deal('other'), phase: 'decided' })).toBe(true);
+    // fail-closed without a deal: the starting phase is unknown
+    expect(can(a, 'setPhase:analysis')).toBe(false);
+    expect(can(m('associate'), 'setPhase:analysis')).toBe(true);
     expect(can(a, 'validateBote', deal('other'))).toBe(false);
     expect(can(a, 'decide', deal('other'))).toBe(false);
     expect(can(a, 'delete', deal('other'))).toBe(false);

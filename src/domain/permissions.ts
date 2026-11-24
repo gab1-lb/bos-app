@@ -30,8 +30,8 @@ export function can(member: Member, action: Action, deal?: DealMeta): boolean {
 
   if (action === 'edit' || action === 'create') return true;
   if (action.startsWith('setPhase:')) {
-    // analysts move deals only within phases 1-3: both the target and the current phase
-    return senior || (ANALYST_PHASES.includes(action.slice(9)) && (!deal || ANALYST_PHASES.includes(deal.phase)));
+    // analysts move deals only within phases 1-3: both the target and the current phase (no deal: fail closed)
+    return senior || (ANALYST_PHASES.includes(action.slice(9)) && !!deal && ANALYST_PHASES.includes(deal.phase));
   }
   if (action === 'archive') return senior || deal?.ownerId === member.id;
   if (action === 'validateBote') return senior && deal?.ownerId !== member.id;
