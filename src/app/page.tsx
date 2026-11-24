@@ -1,10 +1,6 @@
-import { SignOutButton } from '../components/shell/SignOutButton';
+import { AppShell } from '../components/shell/AppShell';
+import { Placeholder } from '../components/shell/Placeholder';
 
 export default function Home() {
-  return (
-    <main>
-      <h1>Accueil</h1>
-      <SignOutButton />
-    </main>
-  );
+  return <AppShell><Placeholder title="Accueil" /></AppShell>;
 }
