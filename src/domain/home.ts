@@ -2,7 +2,7 @@ import type { Deal, Mandate, Screen } from '../engine/types';
 import { comps, returns } from '../engine/finance';
 import { screen } from '../engine/screen';
 import type { DealMeta } from './phases';
-import { waitsFor, type Wait } from './waits';
+import { parisDayNumber, waitsFor, type Wait } from './waits';
 
 export type HomeCard = {
   meta: DealMeta;
@@ -42,20 +42,22 @@ export function homeCards(
       (a, b) =>
         count(b.waits, 'overdue') - count(a.waits, 'overdue') ||
         count(b.waits, 'late') - count(a.waits, 'late') ||
-        b.meta.updatedAt.localeCompare(a.meta.updatedAt),
+        Date.parse(b.meta.updatedAt) - Date.parse(a.meta.updatedAt),
     );
 }
 
 export function homeCounters(cards: HomeCard[], now: Date) {
-  const limit = now.getTime() + 14 * 86400000;
   return {
     active: cards.length,
-    toReview: cards.filter((c) => c.meta.phase === 'associate_review' && !c.meta.validatedAt).length,
+    // "BOTe à relire": written but not yet reviewed, or in associate review awaiting validation.
+    toReview: cards.filter(
+      (c) => c.meta.phase === 'bote_written' || (c.meta.phase === 'associate_review' && !c.meta.validatedAt),
+    ).length,
     lateWaits: cards.reduce((n, c) => n + c.waits.filter((w) => w.level !== 'ok').length, 0),
     committeeSoon: cards.filter((c) => {
       if (!c.meta.committeeDate) return false;
-      const t = new Date(c.meta.committeeDate).getTime();
-      return t >= now.getTime() - 86400000 && t <= limit;
+      const days = parisDayNumber(new Date(c.meta.committeeDate)) - parisDayNumber(now);
+      return days >= 0 && days <= 14;
     }).length,
   };
 }

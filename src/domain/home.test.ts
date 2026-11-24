@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { homeCards, homeCounters } from './home';
 import { blankDeal, DEFAULT_MANDATE } from '../engine/samples';
-import { mkMeta } from './waits.test';
+import { NOW, ago, mkMeta } from './testutil';
 import type { Deal } from '../engine/types';
 
-const now = new Date('2026-11-24T10:00:00+01:00');
-const ago = (n: number) => new Date(now.getTime() - n * 86400000).toISOString();
+const now = NOW;
 const none = () => null;
 const withQs = (id: string, days: number[]): Deal => {
   const d = blankDeal(id);
@@ -52,5 +51,21 @@ describe('homeCounters', () => {
       { deal: blankDeal('b'), meta: mkMeta({ id: 'b', phase: 'associate_review', phaseEnteredAt: ago(2), committeeDate: new Date(now.getTime() + 30 * 86400000).toISOString() }) },
     ];
     expect(homeCounters(homeCards(items, DEFAULT_MANDATE, now, none), now)).toEqual({ active: 2, toReview: 1, lateWaits: 1, committeeSoon: 1 });
+  });
+  it('committeeSoon uses Paris calendar days', () => {
+    const at = (iso: string) => homeCounters(homeCards([{ deal: blankDeal('a'), meta: mkMeta({ committeeDate: iso }) }], DEFAULT_MANDATE, now, none), now).committeeSoon;
+    expect(at('2026-11-24T08:00:00+01:00')).toBe(1); // today
+    expect(at('2026-12-08T23:00:00+01:00')).toBe(1); // +14
+    expect(at('2026-12-09T00:30:00+01:00')).toBe(0); // +15
+    expect(at('2026-11-23T23:00:00+01:00')).toBe(0); // yesterday
+  });
+  it('toReview counts bote_written and unvalidated associate_review', () => {
+    const items = [
+      { deal: blankDeal('a'), meta: mkMeta({ id: 'a', phase: 'bote_written' }) },
+      { deal: blankDeal('b'), meta: mkMeta({ id: 'b', phase: 'associate_review' }) },
+      { deal: blankDeal('c'), meta: mkMeta({ id: 'c', phase: 'associate_review', validatedAt: ago(1) }) },
+      { deal: blankDeal('d'), meta: mkMeta({ id: 'd', phase: 'analysis' }) },
+    ];
+    expect(homeCounters(homeCards(items, DEFAULT_MANDATE, now, none), now).toReview).toBe(2);
   });
 });

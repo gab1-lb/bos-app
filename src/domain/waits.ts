@@ -15,7 +15,7 @@ export type Wait = {
 const TZ = 'Europe/Paris';
 const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
 
-function parisDayNumber(d: Date): number {
+export function parisDayNumber(d: Date): number {
   const parts = fmt.formatToParts(d);
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
   return Date.UTC(get('year'), get('month') - 1, get('day')) / 86400000;
@@ -39,6 +39,7 @@ export function waitsFor(deal: Deal, meta: DealMeta, now: Date): Wait[] {
       dealId: deal.id,
       source: 'question',
       label: q.q,
+      // Default recipient when a sent question has no explicit awaitedFrom: the target's director.
       from: q.awaitedFrom ?? 'director',
       since: q.sentAt,
       days,

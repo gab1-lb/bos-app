@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { daysSince, waitsFor } from './waits';
 import { blankDeal } from '../engine/samples';
-import type { DealMeta } from './phases';
+import { NOW, ago, mkMeta } from './testutil';
 
-const now = new Date('2026-11-24T10:00:00+01:00');
-const ago = (n: number) => new Date(now.getTime() - n * 86400000).toISOString();
-export const mkMeta = (o: Partial<DealMeta> = {}): DealMeta => ({
-  id: 'd1', ownerId: 'u1', contributorIds: [], phase: 'analysis', phaseEnteredAt: ago(1), decision: null, decidedAt: null,
-  committeeDate: null, validatedBy: null, validatedAt: null, archived: false, updatedAt: ago(1), updatedBy: 'u1', ...o,
-});
+const now = NOW;
 const dealWithQ = (sentDaysAgo: number, answered = false) => {
   const d = blankDeal('X');
   d.id = 'd1';
@@ -42,6 +37,14 @@ describe('waitsFor', () => {
     expect(w).toHaveLength(1);
     expect(w[0]).toMatchObject({ source: 'phase', from: 'associate', level: 'late', label: 'Revue associate' });
     expect(waitsFor(blankDeal('X'), mkMeta({ phase: 'associate_review', phaseEnteredAt: ago(9), validatedAt: ago(1) }), now)).toEqual([]);
+  });
+  it('phase wait boundaries', () => {
+    const at = (n: number) => waitsFor(blankDeal('X'), mkMeta({ phase: 'associate_review', phaseEnteredAt: ago(n) }), now)[0].level;
+    expect(at(7)).toBe('ok');
+    expect(at(15)).toBe('overdue');
+  });
+  it('committee wait overdue', () => {
+    expect(waitsFor(blankDeal('X'), mkMeta({ phase: 'committee', phaseEnteredAt: ago(15) }), now)[0].level).toBe('overdue');
   });
   it('committee wait', () => {
     const w = waitsFor(blankDeal('X'), mkMeta({ phase: 'committee', phaseEnteredAt: ago(3) }), now);
