@@ -1,5 +1,12 @@
 // Dictionnaire FR -> EN (repris de legacy/en.js)
 export const EN: Record<string, string> = {
+  "Analyse en cours": "Analysis in progress",
+  "BOTe rédigé": "BOTe drafted",
+  "Revue associate": "Associate review",
+  "Présentation comité": "Committee presentation",
+  "Décision": "Decision",
+  "Go DD": "Go DD",
+  "No-go": "No-go",
   "Enregistrement impossible : {0}": "Could not save: {0}",
   "Enregistrement…": "Saving…",
   "Enregistré · espace privé": "Saved · private space",
