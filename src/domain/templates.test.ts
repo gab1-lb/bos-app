@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_TEMPLATES, mailtoHref, renderTemplate, suggestTemplate, type TemplateKey } from './templates';
+import { DEFAULT_TEMPLATES, defaultRecipient, mailtoHref, renderTemplate, suggestTemplate, type TemplateKey } from './templates';
 import { blankDeal, demoDeal, DEFAULT_MANDATE } from '../engine/samples';
 import { mkMeta, NOW, ago } from './testutil';
 import type { Member } from './permissions';
@@ -107,5 +107,26 @@ describe('mailtoHref', () => {
     const h = mailtoHref('Sujet é', 'a\nb', 'x@y.fr');
     expect(h.startsWith('mailto:x@y.fr?subject=')).toBe(true);
     expect(h).toContain('body=a%0D%0Ab');
+  });
+});
+
+describe('home dialog helpers', () => {
+  const Q = (q: string, o: object) => ({ q, cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...o });
+  const wait = (from: Wait['from'], days: number): Wait => ({ dealId: 'd', source: 'question', label: 'x', from, since: ago(days), days, level: days > 7 ? 'late' : 'ok' });
+  it('reminder to the director includes sent questions with no explicit recipient (same default as waits)', () => {
+    const d = demoDeal();
+    d.questions = [Q('N1', { status: 'Envoyée', sentAt: ago(9) }), Q('S1', { status: 'Envoyée', awaitedFrom: 'seller', sentAt: ago(9) })];
+    const r = renderTemplate(tpl('reminder', 'fr'), { ...ctx(d), recipient: 'director' });
+    expect(r.body).toContain('- N1');
+    expect(r.body).not.toContain('S1');
+  });
+  it('defaultRecipient: oldest question wait for reminder, most frequent explicit recipient for info_request', () => {
+    const d = demoDeal();
+    d.questions = [Q('A', { awaitedFrom: 'seller' }), Q('B', { awaitedFrom: 'seller' }), Q('C', { awaitedFrom: 'director' }), Q('D', {})];
+    expect(defaultRecipient('reminder', d, [wait('director', 3), wait('seller', 12)])).toBe('seller');
+    expect(defaultRecipient('reminder', d, [])).toBeUndefined();
+    expect(defaultRecipient('info_request', d, [])).toBe('seller');
+    expect(defaultRecipient('info_request', demoDeal(), [])).toBeUndefined();
+    expect(defaultRecipient('bote_review', d, [wait('seller', 12)])).toBeUndefined();
   });
 });

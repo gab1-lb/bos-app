@@ -3,6 +3,7 @@ import { comps, returns } from '../engine/finance';
 import { screen } from '../engine/screen';
 import type { DealMeta } from './phases';
 import { parisDayNumber, waitsFor, type Wait } from './waits';
+import { t, type Locale } from '../i18n/format';
 
 export type HomeCard = {
   meta: DealMeta;
@@ -60,4 +61,17 @@ export function homeCounters(cards: HomeCard[], now: Date) {
       return days >= 0 && days <= 14;
     }).length,
   };
+}
+
+/** « il y a 2 h » : à l'instant, minutes, heures (même jour à Paris), hier, puis jours calendaires. */
+export function relativeTime(locale: Locale, iso: string, now: Date): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  const mins = Math.floor((now.getTime() - at.getTime()) / 60000);
+  if (mins < 1) return t(locale, 'à l’instant');
+  if (mins < 60) return t(locale, 'il y a {0} min', mins);
+  const days = parisDayNumber(now) - parisDayNumber(at);
+  if (days <= 0) return t(locale, 'il y a {0} h', Math.floor(mins / 60));
+  if (days === 1) return t(locale, 'hier');
+  return t(locale, 'il y a {0} j', days);
 }

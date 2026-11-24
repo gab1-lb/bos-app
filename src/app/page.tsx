@@ -1,6 +1,6 @@
+import { HomeBoard } from '../components/home/HomeBoard';
 import { AppShell } from '../components/shell/AppShell';
-import { Placeholder } from '../components/shell/Placeholder';
 
 export default function Home() {
-  return <AppShell><Placeholder title="Accueil" /></AppShell>;
+  return <AppShell><HomeBoard /></AppShell>;
 }

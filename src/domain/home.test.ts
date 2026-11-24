@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { homeCards, homeCounters } from './home';
+import { homeCards, homeCounters, relativeTime } from './home';
 import { blankDeal, DEFAULT_MANDATE } from '../engine/samples';
 import { NOW, ago, mkMeta } from './testutil';
 import type { Deal } from '../engine/types';
@@ -67,5 +67,27 @@ describe('homeCounters', () => {
       { deal: blankDeal('d'), meta: mkMeta({ id: 'd', phase: 'analysis' }) },
     ];
     expect(homeCounters(homeCards(items, DEFAULT_MANDATE, now, none), now).toReview).toBe(2);
+  });
+});
+
+describe('relativeTime', () => {
+  const at = (iso: string, locale: 'fr' | 'en' = 'fr') => relativeTime(locale, iso, now);
+  it('FR', () => {
+    expect(at('2026-11-24T09:59:40+01:00')).toBe('à l’instant');
+    expect(at('2026-11-24T09:55:00+01:00')).toBe('il y a 5 min');
+    expect(at('2026-11-24T08:00:00+01:00')).toBe('il y a 2 h');
+    expect(at('2026-11-23T20:00:00+01:00')).toBe('hier');
+    expect(at('2026-11-21T12:00:00+01:00')).toBe('il y a 3 j');
+  });
+  it('EN', () => {
+    expect(at('2026-11-24T09:59:40+01:00', 'en')).toBe('just now');
+    expect(at('2026-11-24T09:55:00+01:00', 'en')).toBe('5 min ago');
+    expect(at('2026-11-24T08:00:00+01:00', 'en')).toBe('2 h ago');
+    expect(at('2026-11-23T20:00:00+01:00', 'en')).toBe('yesterday');
+    expect(at('2026-11-21T12:00:00+01:00', 'en')).toBe('3 d ago');
+  });
+  it('future or invalid timestamps read as now / empty', () => {
+    expect(at('2026-11-24T11:00:00+01:00')).toBe('à l’instant');
+    expect(at('nope')).toBe('');
   });
 });

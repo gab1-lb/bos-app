@@ -209,7 +209,10 @@ function variables(ctx: RenderCtx, key: TemplateKey): Record<string, string> {
   const open = deal.questions.filter((x) => x.status !== 'Répondue');
   const bullets = (qs: typeof open) => qs.map((x) => '- ' + x.q).join('\n');
   const forRecipient = (qs: typeof open) => (recipient === undefined ? qs : qs.filter((x) => x.awaitedFrom === recipient));
-  const pending = forRecipient(open.filter((x) => x.sentAt && !x.answeredAt));
+  // Sent questions with no explicit recipient are awaited from the director, as in waitsFor.
+  const pending = open
+    .filter((x) => x.sentAt && !x.answeredAt)
+    .filter((x) => recipient === undefined || (x.awaitedFrom ?? 'director') === recipient);
   const mine = key === 'reminder' ? pending : forRecipient(open);
   const pendingDays = pending.map((x) => daysSince(x.sentAt as string, now));
   const none = locale === 'en' ? 'No open questions.' : 'Aucune question ouverte.';
@@ -268,4 +271,22 @@ export function suggestTemplate(meta: DealMeta, waits: Wait[], deal?: Deal): Tem
 export function mailtoHref(subject: string, body: string, to = ''): string {
   const enc = (s: string) => encodeURIComponent(s.replace(/\r?\n/g, '\r\n'));
   return `mailto:${encodeURIComponent(to).replace(/%40/g, '@')}?subject=${enc(subject)}&body=${enc(body)}`;
+}
+
+/** Recipient preselected in the message dialog (only info_request / reminder are addressed per recipient). */
+export function defaultRecipient(key: TemplateKey, deal: Deal, waits: Wait[]): Recipient | undefined {
+  if (key === 'reminder') {
+    const qs = waits.filter((w) => w.source === 'question');
+    return qs.length ? qs.reduce((a, b) => (b.days > a.days ? b : a)).from : undefined;
+  }
+  if (key === 'info_request') {
+    const n = new Map<Recipient, number>();
+    for (const q of deal.questions) {
+      if (q.status !== 'Répondue' && !q.sentAt && q.awaitedFrom) n.set(q.awaitedFrom, (n.get(q.awaitedFrom) ?? 0) + 1);
+    }
+    let best: Recipient | undefined;
+    for (const [r, c] of n) if (best === undefined || c > (n.get(best) as number)) best = r;
+    return best;
+  }
+  return undefined;
 }
