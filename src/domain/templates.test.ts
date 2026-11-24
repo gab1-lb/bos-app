@@ -45,6 +45,45 @@ describe('templates', () => {
   });
 });
 
+describe('review fixes', () => {
+  const Q = (q: string, o: object) => ({ q, cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...o });
+  it('go_dd and no_go never disclose max price or hurdle', () => {
+    for (const key of ['go_dd', 'no_go'] as const) {
+      for (const locale of ['fr', 'en'] as const) {
+        const r = renderTemplate(tpl(key, locale), ctx(demoDeal(), locale));
+        const text = nb(r.subject + r.body);
+        expect(text).not.toMatch(/43[,.]9/);
+        expect(text).not.toMatch(/15[,.]0/);
+        expect(text).not.toMatch(/34[,.]0|46[,.]1/);
+        expect(r.missing).not.toContain('maxPrice');
+        expect(r.missing).not.toContain('hurdle');
+      }
+    }
+  });
+  it('reminder lists only sent+unanswered for the recipient, days per recipient', () => {
+    const d = demoDeal();
+    d.questions = [
+      Q('S1', { status: 'Envoyée', awaitedFrom: 'seller', sentAt: ago(10) }),
+      Q('S2', { status: 'Envoyée', awaitedFrom: 'seller', sentAt: ago(12) }),
+      Q('D1', { status: 'Envoyée', awaitedFrom: 'director', sentAt: ago(30) }),
+      Q('U1', { awaitedFrom: 'seller' }),
+    ];
+    const r = renderTemplate(tpl('reminder', 'fr'), { ...ctx(d), recipient: 'seller' });
+    expect(r.body).toContain('- S1');
+    expect(r.body).toContain('- S2');
+    expect(r.body).not.toMatch(/D1|U1/);
+    expect(r.body).toContain('depuis 12 jours');
+  });
+  it('empty question list renders a sentence and is not missing', () => {
+    const d = demoDeal();
+    d.questions = [];
+    const r = renderTemplate(tpl('bote_review', 'fr'), ctx(d));
+    expect(r.body).toContain('Aucune question ouverte.');
+    expect(r.missing).not.toContain('openQuestions');
+    expect(renderTemplate(tpl('bote_review', 'en'), ctx(d, 'en')).body).toContain('No open questions.');
+  });
+});
+
 describe('suggestTemplate', () => {
   const w = (level: Wait['level'], source: Wait['source'] = 'question'): Wait =>
     ({ dealId: 'd1', source, label: '', from: 'seller', since: ago(9), days: 9, level });

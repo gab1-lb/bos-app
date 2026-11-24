@@ -37,7 +37,7 @@ Best regards,
   fr('reminder', '{{deal.name}} : relance',
 `Bonjour,
 
-Je me permets de revenir vers vous au sujet de notre demande sur le {{deal.name}}, restée sans réponse depuis {{days}} jours. Les points en attente sont les suivants :
+Nous nous permettons de revenir vers vous au sujet de notre demande sur le {{deal.name}}, restée sans réponse depuis {{days}} jours. Les points en attente sont les suivants :
 
 {{questionsFor}}
 
@@ -107,7 +107,7 @@ Veuillez trouver ci-dessous la synthèse du {{deal.name}} pour le comité.
 
 - Chiffre d’affaires : {{rev}} ; EBITDA ajusté : {{adjEbitda}} (marge {{margin}})
 - Prix demandé : {{ask}}, soit {{askMultiple}} l’EBITDA ajusté
-- Transactions comparables : {{range}}
+- Valorisation implicite (multiples de transactions comparables) : {{range}}
 - TRI au prix demandé : {{irr}}, pour un seuil de {{hurdle}}
 - Prix maximum compatible avec le seuil : {{maxPrice}}
 
@@ -127,7 +127,7 @@ Please find below the {{deal.name}} summary for the committee.
 
 - Revenue: {{rev}}; adjusted EBITDA: {{adjEbitda}} ({{margin}} margin)
 - Asking price: {{ask}}, i.e. {{askMultiple}} adjusted EBITDA
-- Precedent transactions: {{range}}
+- Implied valuation (precedent-transaction multiples): {{range}}
 - IRR at asking price: {{irr}}, against a {{hurdle}} hurdle
 - Maximum price consistent with the hurdle: {{maxPrice}}
 
@@ -143,7 +143,7 @@ Best regards,
   fr('no_go', '{{deal.name}} : suite de nos échanges',
 `Bonjour,
 
-Nous vous remercions du temps consacré à la présentation du {{deal.name}}. Après examen approfondi, nous avons décidé de ne pas donner suite à ce stade.
+Nous vous remercions du temps consacré à la présentation du {{deal.name}} et des informations partagées. Après examen approfondi, nous avons décidé de ne pas donner suite à ce stade, au regard de nos critères d’investissement.
 
 Nous restons ouverts à échanger si la situation évolue.
 
@@ -152,7 +152,7 @@ Bien cordialement,
   en('no_go', '{{deal.name}}: following our discussions',
 `Hello,
 
-Thank you for the time spent presenting {{deal.name}}. After careful review, we have decided not to proceed at this stage.
+Thank you for the time spent presenting {{deal.name}} and for the information shared. After careful review, we have decided not to proceed at this stage, given our investment criteria.
 
 We remain open to reconnecting should circumstances change.
 
@@ -161,9 +161,9 @@ Best regards,
   fr('go_dd', '{{deal.name}} : passage en due diligence',
 `Bonjour,
 
-Nous avons le plaisir de vous confirmer notre souhait de poursuivre avec le {{deal.name}} et d’engager une due diligence. Notre analyse indique une valorisation indicative de {{range}}, un prix maximum de {{maxPrice}} correspondant à notre seuil de rendement.
+Nous avons le plaisir de vous confirmer que nous souhaitons poursuivre avec le {{deal.name}} et engager une due diligence, sous réserve de la confirmation des éléments ci-dessous.
 
-Pourriez-vous nous transmettre les éléments suivants ?
+Pourriez-vous nous transmettre les informations suivantes ?
 
 {{openQuestions}}
 
@@ -174,9 +174,9 @@ Bien cordialement,
   en('go_dd', '{{deal.name}}: moving to due diligence',
 `Hello,
 
-We are pleased to confirm that we wish to proceed with {{deal.name}} and begin due diligence. Our analysis points to an indicative valuation of {{range}}, with a maximum price of {{maxPrice}} consistent with our return hurdle.
+We are pleased to confirm that we wish to proceed with {{deal.name}} and begin due diligence, subject to confirmation of the items below.
 
-Could you please provide the following items?
+Could you please provide the following information?
 
 {{openQuestions}}
 
@@ -198,7 +198,7 @@ export type RenderCtx = {
 
 const has = (n: number | null | undefined): n is number => n != null && Number.isFinite(n);
 
-function variables(ctx: RenderCtx): Record<string, string> {
+function variables(ctx: RenderCtx, key: TemplateKey): Record<string, string> {
   const { deal, mandate, author, recipient, locale, now } = ctx;
   const f = fmt(locale);
   const b = base(deal);
@@ -208,11 +208,11 @@ function variables(ctx: RenderCtx): Record<string, string> {
   const mp = has(hurdle) ? maxPrice(deal, hurdle) : null;
   const open = deal.questions.filter((x) => x.status !== 'Répondue');
   const bullets = (qs: typeof open) => qs.map((x) => '- ' + x.q).join('\n');
-  const mine = recipient === undefined ? open : open.filter((x) => x.awaitedFrom === recipient);
-  const lateDays = deal.questions
-    .filter((x) => x.sentAt && !x.answeredAt)
-    .map((x) => daysSince(x.sentAt as string, now))
-    .filter((d) => d > 7);
+  const forRecipient = (qs: typeof open) => (recipient === undefined ? qs : qs.filter((x) => x.awaitedFrom === recipient));
+  const pending = forRecipient(open.filter((x) => x.sentAt && !x.answeredAt));
+  const mine = key === 'reminder' ? pending : forRecipient(open);
+  const pendingDays = pending.map((x) => daysSince(x.sentAt as string, now));
+  const none = locale === 'en' ? 'No open questions.' : 'Aucune question ouverte.';
   const range =
     has(q.q1) && has(q.q3) && has(b.adjEbitda)
       ? locale === 'en'
@@ -232,15 +232,15 @@ function variables(ctx: RenderCtx): Record<string, string> {
     hurdle: has(hurdle) ? f.pc(hurdle) : '',
     thesis: deal.thesis?.trim() || '',
     risks: deal.risks?.trim() || '',
-    openQuestions: bullets(open),
-    questionsFor: bullets(mine),
+    openQuestions: open.length ? bullets(open) : none,
+    questionsFor: mine.length ? bullets(mine) : none,
     author: author.name || '',
-    days: lateDays.length ? String(Math.max(...lateDays)) : '',
+    days: pendingDays.length ? String(Math.max(...pendingDays)) : '',
   };
 }
 
 export function renderTemplate(tpl: Template, ctx: RenderCtx): { subject: string; body: string; missing: string[] } {
-  const vars = variables(ctx);
+  const vars = variables(ctx, tpl.key);
   const placeholder = ctx.locale === 'en' ? '[to complete]' : '[à compléter]';
   const missing: string[] = [];
   const sub = (s: string) =>
