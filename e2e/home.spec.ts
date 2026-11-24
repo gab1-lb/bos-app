@@ -92,8 +92,13 @@ test('prochaine action : message pré-rempli, copier, ouvrir dans la messagerie'
   await dialog.getByLabel('Modèle').selectOption('bote_review');
   await expect(dialog.getByLabel('Destinataire')).toHaveCount(0);
   await expect(dialog.getByRole('textbox', { name: 'Objet' })).toHaveValue('Projet Hélios : BOTe pour revue');
+  await expect(dialog.getByText('Usage interne — contient des chiffres confidentiels')).toBeVisible();
 
   await dialog.getByLabel('Modèle').selectOption('reminder');
+  await expect(dialog.getByText('Usage interne — contient des chiffres confidentiels')).toHaveCount(0);
+  await expect(dialog.getByText('Message trop long pour la messagerie : utilisez Copier')).toHaveCount(0);
+  await body.fill('x'.repeat(2000));
+  await expect(dialog.getByText('Message trop long pour la messagerie : utilisez Copier')).toBeVisible();
   await body.fill('Bonjour,\n\nPoint sur le Projet Hélios.\n');
   await dialog.getByRole('button', { name: 'Copier', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Message copié' })).toBeVisible();

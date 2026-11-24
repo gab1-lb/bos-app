@@ -9,7 +9,7 @@ import { phaseLabel } from '../../domain/phases';
 import { recipientLabel } from '../../domain/recipients';
 import type { TemplateKey } from '../../domain/templates';
 import { useI18n } from '../../lib/repo-context';
-import { CCLS, TAG } from '../project/Synthese';
+import { CCLS, TAG } from '../project/verdict';
 import { Avatar } from '../ui/Avatar';
 import { Chip } from '../ui/Chip';
 import { Icon } from '../ui/Icon';

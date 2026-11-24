@@ -531,4 +531,6 @@ export const EN: Record<string, string> = {
   "Toutes les variables sont renseignées depuis le dossier.": "All variables are filled from the deal.",
   "Ouvrir dans la messagerie": "Open in email",
   "Copier": "Copy",
+  "Usage interne — contient des chiffres confidentiels": "Internal use — contains confidential figures",
+  "Message trop long pour la messagerie : utilisez Copier": "Message too long for email: use Copy",
 };

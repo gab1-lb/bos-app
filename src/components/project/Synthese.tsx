@@ -14,11 +14,9 @@ import { Reveal } from '../ui/Reveal';
 import { Gauges } from '../valuation/Gauges';
 import { gaugeLabels } from './compute';
 import { useProject } from './ProjectContext';
+import { TAG, VCLS } from './verdict';
 
 const ok = (n: number | null | undefined): n is number => n != null && Number.isFinite(n);
-export const VCLS = { go: '', nego: 'warn', wait: 'warn', stop: 'red' } as const;
-export const CCLS = { go: 'good', nego: 'amber', wait: 'amber', stop: 'bad' } as const;
-export const TAG = { go: 'À poursuivre', nego: 'À négocier', wait: 'À compléter', stop: 'Réserves' } as const;
 const HEAD: Record<string, string> = { go: 'Opportunité à poursuivre', nego: 'Prix à négocier', price: 'Prix à obtenir', coverage: 'Données insuffisantes', mandate: 'Cible hors mandat', weak: 'Réserves fortes' };
 export const MKEY: Record<string, string> = { geo: 'Zone géographique', sector: 'Secteur', minRev: 'CA minimum', maxRev: 'CA maximum', minRecurring: 'Récurrence minimale', minMargin: 'Marge d’EBITDA minimale' };
 

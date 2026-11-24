@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DealRecord } from '../../data/repo';
 import type { Deal, Mandate } from '../../engine/types';
 import { homeCards, homeCounters } from '../../domain/home';
@@ -25,7 +25,10 @@ export function HomeBoard() {
   const [now, setNow] = useState(() => new Date());
   const [msg, setMsg] = useState<{ id: string; key: TemplateKey } | null>(null);
 
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    // Stale-response guard: only the latest request may update the board.
+    const req = ++seq.current;
     try {
       const [items, mandate, members, templates] = await Promise.all([
         repo.listDeals(),
@@ -33,11 +36,12 @@ export function HomeBoard() {
         repo.members().catch(() => [] as Member[]),
         repo.templates().catch(() => DEFAULT_TEMPLATES),
       ]);
+      if (req !== seq.current) return;
       setData({ items, mandate, members, templates: templates.length ? templates : DEFAULT_TEMPLATES });
       setFailed(false);
       setNow(new Date());
     } catch {
-      setFailed(true);
+      if (req === seq.current) setFailed(true);
     }
   }, [repo]);
 

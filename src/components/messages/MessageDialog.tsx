@@ -43,6 +43,10 @@ const VAR_LABEL: Record<string, string> = {
 };
 
 const PER_RECIPIENT: TemplateKey[] = ['info_request', 'reminder'];
+/** Internal templates carrying price / hurdle figures. */
+const INTERNAL: TemplateKey[] = ['bote_review', 'committee_note'];
+/** Beyond this, mail clients may truncate or refuse a mailto: link. */
+const MAILTO_MAX = 1900;
 const ANYONE: Member = { id: '', email: '', name: '', avatarUrl: null, role: null, status: 'active', locale: 'fr' };
 
 type Props = {
@@ -113,6 +117,7 @@ export function MessageDialog({ rec, waits, mandate, templates, initialKey, onCl
     setCopied('failed');
   };
 
+  const mailto = mailtoHref(state.subject, state.body);
   const status = copied === 'body' ? t('Message copié') : copied === 'subject' ? t('Objet copié')
     : copied === 'failed' ? t('Copie impossible : sélectionnez le texte puis Ctrl+C.') : '';
 
@@ -133,6 +138,9 @@ export function MessageDialog({ rec, waits, mandate, templates, initialKey, onCl
               {TEMPLATE_KEYS.map((k) => <option key={k} value={k}>{t(TEMPLATE_LABEL[k])}</option>)}
             </select>
           </div>
+          {INTERNAL.includes(state.key) && (
+            <div className="internal" data-internal><Chip tone="bad">{t('Usage interne — contient des chiffres confidentiels')}</Chip></div>
+          )}
           {PER_RECIPIENT.includes(state.key) && (
             <div className="field">
               <label htmlFor={`${uid}-to`}>{t('Destinataire')}</label>
@@ -170,7 +178,8 @@ export function MessageDialog({ rec, waits, mandate, templates, initialKey, onCl
       </div>
       <footer>
         <span className={`copied ${copied === 'failed' ? 'bad' : ''}`} role="status" aria-live="polite">{status}</span>
-        <a className="btn" href={mailtoHref(state.subject, state.body)}><Icon name="mail" />{t('Ouvrir dans la messagerie')}</a>
+        {mailto.length > MAILTO_MAX && <span className="mailhint" data-mailto-long>{t('Message trop long pour la messagerie : utilisez Copier')}</span>}
+        <a className="btn" href={mailto}><Icon name="mail" />{t('Ouvrir dans la messagerie')}</a>
         <button type="button" className="btn primary" onClick={() => copy(state.body, 'body')}><Icon name="copy" />{t('Copier')}</button>
       </footer>
     </dialog>
