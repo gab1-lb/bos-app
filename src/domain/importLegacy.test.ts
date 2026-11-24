@@ -51,4 +51,26 @@ describe('importLegacy', () => {
     expect(d.plan.taxRate).toBe(25);
     expect(d.questions[0]).toMatchObject({ awaitedFrom: null, sentAt: null, answeredAt: null });
   });
+  it('hardens against malformed deals', () => {
+    const bad = { name: 'bad' };
+    Object.defineProperty(bad, 'hist', { enumerable: true, get() { throw new Error('boom'); } });
+    const r = importLegacy(wrap({ id: 'a', questions: [null, 3, { q: 'x' }] }, bad, { name: 'ok', id: 'c' }), me, NOW);
+    expect(r.errors).toHaveLength(1);
+    expect(r.items.map((i) => i.deal.id)).toEqual(['a', 'c']);
+    expect(r.items[0].deal.questions).toHaveLength(1);
+    expect(r.items[0].deal.questions[0].q).toBe('x');
+  });
+  it('ignores prototype keys as stage', () => {
+    for (const stage of ['__proto__', 'constructor', 'toString']) {
+      const m = importLegacy(wrap({ stage }), me, NOW).items[0].meta;
+      expect(m.phase).toBe('im_received');
+      expect(m.decision).toBeNull();
+    }
+  });
+  it('assigns unique ids when missing', () => {
+    const r = importLegacy(wrap({ name: 'a' }, { name: 'b', id: 5 }), me, NOW);
+    const ids = r.items.map((i) => i.deal.id);
+    expect(ids.every((x) => typeof x === 'string' && x.length > 0)).toBe(true);
+    expect(new Set(ids).size).toBe(2);
+  });
 });

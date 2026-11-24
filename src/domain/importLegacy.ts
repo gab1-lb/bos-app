@@ -26,7 +26,8 @@ function migrate(d: Record<string, unknown>): Deal {
     plan: { ...b.plan, ...o('plan') }, dcf: { ...b.dcf, ...o('dcf') },
     synergies: { ...b.synergies, ...o('synergies') }, financing: { ...b.financing, ...o('financing') },
   } as Deal;
-  deal.questions = (Array.isArray(deal.questions) ? deal.questions : []).map((q) => ({
+  if (typeof d.id !== 'string' || !d.id) deal.id = b.id;
+  deal.questions = (Array.isArray(deal.questions) ? deal.questions : []).filter(isObj).map((q) => ({
     ...q, awaitedFrom: q.awaitedFrom ?? null, sentAt: q.sentAt ?? null, answeredAt: q.answeredAt ?? null,
   }));
   return deal;
@@ -45,8 +46,9 @@ export function importLegacy(json: unknown, importer: Member, now: Date): { item
   const errors: string[] = [];
   data.deals.forEach((raw, i) => {
     if (!isObj(raw)) { errors.push(`Dossier ${i + 1} : invalide`); return; }
-    const deal = migrate(raw);
-    const st = STAGES[deal.stage] ?? { phase: 'im_received' as Phase, decision: null };
+    let deal: Deal;
+    try { deal = migrate(raw); } catch (e) { errors.push(`Dossier ${i + 1} : ${e instanceof Error ? e.message : 'invalide'}`); return; }
+    const st = (typeof deal.stage === 'string' && Object.hasOwn(STAGES, deal.stage) ? STAGES[deal.stage] : undefined) ?? { phase: 'im_received' as Phase, decision: null };
     items.push({
       deal,
       meta: {
