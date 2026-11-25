@@ -14,6 +14,7 @@ import { Reveal } from '../ui/Reveal';
 import { Gauges } from '../valuation/Gauges';
 import { gaugeLabels } from './compute';
 import { useProject } from './ProjectContext';
+import { MissingData } from './MissingData';
 import { MKEY, TAG, VCLS, headlineKey, reasonText } from './verdict';
 
 const ok = (n: number | null | undefined): n is number => n != null && Number.isFinite(n);
@@ -103,7 +104,11 @@ export function Synthese() {
           foot={[ok(b.arr) ? 'ARR ' + meur(b.arr) : '', ok(b.churn) ? t('churn {0}', pc(b.churn)) : ''].filter(Boolean).join(' · ')} />
       </Reveal>
 
-      <Reveal className="g2e mt" index={5}>
+      <Reveal className="mt" index={5}>
+        <MissingData />
+      </Reveal>
+
+      <Reveal className="g2e mt" index={6}>
         <Link className="card wide" href={`${base}/valorisation`}>
           <span className="iconbox"><Icon name="coins" /></span>
           <span>
@@ -124,7 +129,7 @@ export function Synthese() {
         </Link>
       </Reveal>
 
-      <Reveal className="g2b mt" index={6}>
+      <Reveal className="g2b mt" index={7}>
         <Card title={t('Valorisation')} icon="scale" right={<Link className="link" href={`${base}/valorisation`}>{t('Détail')}<Icon name="chev" /></Link>}>
           <Gauges compact rows={gRows} marks={{ ask: b.ask, entry: ret ? ret.ev : null }}
             emptyText={t('Renseignez le CA, l’EBITDA et au moins un comparable pour afficher les fourchettes.')} />
@@ -144,7 +149,7 @@ export function Synthese() {
         </Card>
       </Reveal>
 
-      <Reveal className="g2b mt" index={7}>
+      <Reveal className="g2b mt" index={8}>
         <Card title={t('Facteurs de décision')} icon="scale">
           <div className="thead"><span>{t('Facteur analysé')}</span><span>{t('Signal')}</span></div>
           {sc.crit.map((k) => (

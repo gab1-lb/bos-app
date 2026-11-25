@@ -517,3 +517,32 @@ dialog.tourdlg { width: min(1120px, calc(100% - 24px)); }
 dialog.tourdlg[open] { display: flex; flex-direction: column; }
 dialog.tourdlg video { display: block; width: 100%; height: auto; max-height: calc(100vh - 140px); background: var(--navy-1); }
 @media (prefers-reduced-motion: reduce) { .tourcard:hover .tc-thumb img, .tourcard:hover .tc-play { transform: none; } }
+
+/* Données manquantes (Synthèse) */
+.mgroups { display: grid; gap: 8px; }
+.mgrp { border: 1px solid var(--line-2); border-radius: 9px; background: var(--surface); transition: border-color .15s ease; }
+.mgrp.on { border-color: var(--line); }
+.mghead { width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; text-align: left; font-size: 14px; font-weight: 590; color: var(--ink-2); }
+.mghead:hover { background: var(--soft-2); }
+.mghead .icon { width: 15px; height: 15px; flex: none; color: var(--faint); transition: transform .15s ease; }
+.mgrp.on .mghead .icon { transform: rotate(90deg); }
+.mcount { margin-left: auto; min-width: 26px; padding: 1px 8px; border-radius: 999px; background: var(--warn-soft); border: 1px solid var(--warn-line); color: var(--warn); font-size: 12.5px; font-weight: 650; text-align: center; font-variant-numeric: tabular-nums; }
+.mlist { list-style: none; margin: 0; padding: 0 12px 2px 37px; }
+.mrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line-2); font-size: 14px; }
+.mlbl label, .mlbl b { display: block; font-weight: 560; color: var(--ink); }
+.mctl { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.mctl .ib .in { flex: none; width: 96px; text-align: right; }
+.mctl .unit { min-width: 52px; }
+.mask { display: flex; justify-content: flex-end; width: 190px; }
+.mask:empty { visibility: hidden; }
+.mctl .in.mtxt { width: 240px; min-width: 0; }
+.mdone { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 9px; background: var(--good-soft); border: 1px solid var(--good-line); color: var(--good); font-size: 14px; font-weight: 560; }
+.mdone .iconbox { background: var(--surface); color: var(--good); }
+@media (max-width: 640px) {
+  .mlist { padding-left: 12px; }
+  .mrow { grid-template-columns: minmax(0, 1fr); }
+  .mctl { justify-content: flex-start; }
+  .mask { width: auto; justify-content: flex-start; }
+  .mask:empty { display: none; }
+  .mctl .in.mtxt { width: 100%; }
+}

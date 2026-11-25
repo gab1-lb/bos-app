@@ -45,7 +45,7 @@ export function Valorisation() {
       </Reveal>
 
       <Reveal index={1}>
-        <Card className="mt" title={t('Transactions comparables')} icon="list"
+        <Card id="comps" className="mt" title={t('Transactions comparables')} icon="list"
           right={editable ? <button type="button" className="btn sm" onClick={() => appendItems('comps', [newComp()])}><Icon name="plus" />{t('Ajouter')}</button> : null}>
           <div className="tw">
             <table>
