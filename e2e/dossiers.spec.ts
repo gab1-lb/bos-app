@@ -1,9 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import * as XLSX from 'xlsx';
 import { blankDeal } from '../src/engine/samples';
 
 const FIXTURE = join(__dirname, 'fixtures', 'legacy-v1.json');
+const IM_PDF = join(__dirname, 'fixtures', 'im-atlas.pdf');
 
 type Hooks = { __bosRepo: { createDeal(d: unknown): Promise<string> } };
 
@@ -14,6 +16,16 @@ function watchErrors(page: Page) {
   // In-page confirmations only: a native dialog is a failure.
   page.on('dialog', (d) => { errors.push(`native dialog: ${d.message()}`); void d.dismiss(); });
   return errors;
+}
+
+/** Requests that leave the app's origin (third-party scripts, CDNs): there must be none. */
+function watchOutside(page: Page) {
+  const out: string[] = [];
+  page.on('request', (r) => {
+    const u = new URL(r.url());
+    if (!['localhost', '127.0.0.1'].includes(u.hostname) && !u.protocol.startsWith('blob') && !u.protocol.startsWith('data')) out.push(r.url());
+  });
+  return out;
 }
 
 async function loginAs(page: Page, role: string) {
@@ -182,13 +194,34 @@ test('import d’IM (texte collé) : nouveau dossier avec les valeurs reconnues'
   expect(errors).toEqual([]);
 });
 
+test('import d’IM en PDF : pdf.js livré avec l’application lit le fichier et repère les valeurs', async ({ page }) => {
+  const errors = watchErrors(page);
+  const outside = watchOutside(page);
+  await loginAs(page, 'analyst');
+  await openDossiers(page);
+  await page.getByRole('button', { name: 'Importer un IM' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.locator('input[type="file"]').setInputFiles(IM_PDF);
+  const rows = dialog.locator('[data-extract-row]');
+  await expect(rows).toHaveCount(5);
+  await expect(rows.filter({ hasText: 'Chiffre d’affaires' })).toContainText('12,4');
+  await expect(rows.filter({ hasText: 'Chiffre d’affaires' })).toContainText('IM p. 1');
+  await expect(rows.filter({ hasText: 'EBITDA' })).toContainText('3,1');
+  await expect(rows.filter({ hasText: 'Dette nette' })).toContainText('1,2');
+  await expect(dialog.getByText('Exercice détecté : 2025.')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Créer un nouveau dossier' }).click();
+  await expect(page).toHaveURL(/\/projet\/[^/]+\/financiers$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'im atlas' })).toBeVisible();
+  await expect(page.getByText('Logiciel métier')).toBeVisible();
+  await expect(page.locator('#f-hist\\.rev\\.4')).toHaveValue('12,4');
+  await expect(page.locator('#f-kpi\\.churn')).toHaveValue('4,5');
+  expect(outside).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test('en-tête du projet : note de comité et Excel téléchargés, IM appliqué au dossier ouvert', async ({ page }) => {
-  // SheetJS comes from cdnjs: stub it so the test does not depend on the network.
-  await page.route('https://cdnjs.cloudflare.com/ajax/libs/xlsx/**', (r) => r.fulfill({
-    contentType: 'application/javascript',
-    body: `window.XLSX = { utils: { book_new: () => ({ s: [] }), aoa_to_sheet: (a) => ({ a }), book_append_sheet: (wb, ws, n) => wb.s.push(n) },
-      write: (wb) => new TextEncoder().encode(wb.s.join('|')) };`,
-  }));
+  // SheetJS is bundled with the app: no request may leave the app's origin.
+  const outside = watchOutside(page);
   await loginAs(page, 'admin');
   await page.goto('/projet/demo-helios/synthese');
   await expect(page.getByRole('heading', { level: 1, name: 'Projet Hélios' })).toBeVisible();
@@ -201,7 +234,13 @@ test('en-tête du projet : note de comité et Excel téléchargés, IM appliqué
 
   const [xlsx] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Excel' }).click()]);
   expect(xlsx.suggestedFilename()).toBe('BOS_Projet_Helios.xlsx');
-  expect(readFileSync(await xlsx.path(), 'utf8')).toBe('Synthèse|Données financières|Comparables|DCF|Rendement|Demandes');
+  const bytes = readFileSync(await xlsx.path());
+  expect(bytes.length).toBeGreaterThan(5000);
+  expect(bytes.subarray(0, 2).toString('latin1')).toBe('PK'); // a real .xlsx is a zip archive
+  const wb = XLSX.read(bytes, { type: 'buffer' });
+  expect(wb.SheetNames).toEqual(['Synthèse', 'Données financières', 'Comparables', 'DCF', 'Rendement', 'Demandes']);
+  expect(XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets['Synthèse'], { header: 1 })[0]).toEqual(['Projet Hélios']);
+  expect(outside).toEqual([]);
 
   await page.getByRole('button', { name: 'Importer un IM' }).click();
   const dialog = page.getByRole('dialog');

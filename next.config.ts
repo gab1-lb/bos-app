@@ -12,7 +12,12 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // `npm run record:tour -- --dev` : pas d'indicateur Next.js dans la vidéo.
   ...(process.env.BOS_HIDE_DEV_INDICATOR === '1' ? { devIndicators: false as const } : {}),
-  /* config options here */
+  // pdf.js (IM import) requires the Node-only `canvas` package in a branch browsers never take: not bundled.
+  webpack(config) {
+    config.resolve.alias = { ...config.resolve.alias, canvas: false };
+    return config;
+  },
+  turbopack: { resolveAlias: { canvas: './src/lib/empty-module.ts' } },
 };
 
 export default nextConfig;

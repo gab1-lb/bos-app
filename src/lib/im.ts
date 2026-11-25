@@ -1,6 +1,5 @@
 /* Import d'IM : lecture du PDF dans le navigateur et repérage des indicateurs (port de extract / pdfPages / showExtract de legacy/app.js). */
 import type { Deal } from '../engine/types';
-import { loadScript } from './loadScript';
 
 export type ImKey = 'rev' | 'ebitda' | 'arr' | 'recurring' | 'churn' | 'top10' | 'netDebt' | 'askPrice';
 export type ImUnit = 'M€' | '%';
@@ -82,18 +81,25 @@ type PdfJs = {
   };
 };
 
-const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+let pdfjs: Promise<PdfJs> | null = null;
 
-/** Texte des 80 premières pages d'un PDF, lu dans le navigateur avec pdf.js (chargé à la demande depuis cdnjs). */
+/** pdf.js, bundled with the app (no third-party script) and loaded only when a PDF is read. Its worker is a file of
+ *  the app too; if the browser cannot start it, pdf.js falls back to parsing in the page. */
+function loadPdfJs(): Promise<PdfJs> {
+  pdfjs ??= (async () => {
+    const mod = (await import('pdfjs-dist/legacy/build/pdf.js')) as unknown as PdfJs & { default?: PdfJs };
+    const lib = mod.default ?? mod;
+    lib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.min.js', import.meta.url).toString();
+    return lib;
+  })().catch((e) => { pdfjs = null; throw e; });
+  return pdfjs;
+}
+
+/** Texte des 80 premières pages d'un PDF, lu dans le navigateur avec pdf.js. */
 export async function pdfPages(file: File): Promise<string[]> {
-  const w = window as unknown as { pdfjsLib?: PdfJs };
-  if (!w.pdfjsLib) {
-    await loadScript(PDFJS + 'pdf.min.js');
-    // As in the legacy page: the worker script in the page too, so pdf.js can fall back to it.
-    await loadScript(PDFJS + 'pdf.worker.min.js');
-    w.pdfjsLib!.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
-  }
-  const doc = await w.pdfjsLib!.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
+  const lib = await loadPdfJs();
+  // isEvalSupported: false — no code generated from the PDF (CVE-2024-4367).
+  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
   const pages: string[] = [];
   for (let p = 1; p <= Math.min(doc.numPages, 80); p++) {
     const tc = await (await doc.getPage(p)).getTextContent();

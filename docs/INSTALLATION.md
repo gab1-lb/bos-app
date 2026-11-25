@@ -115,8 +115,7 @@ Prévoyez environ 45 $ par mois au total (tarifs indicatifs, à vérifier sur le
 
 ## Limites connues
 
-- **Bibliothèques externes** : la lecture des PDF (import d'un IM) utilise pdf.js et l'export Excel utilise SheetJS, tous deux chargés à la demande depuis `cdnjs.cloudflare.com`. Après le déploiement, testez une fois l'import d'un IM en PDF et un export Excel. Si le réseau de l'entreprise bloque cdnjs, ces deux fonctions échoueront.
-- **Pas de SRI** : ces scripts sont chargés sans contrôle d'intégrité (Subresource Integrity) pour le moment.
+- **Lecture des PDF et export Excel** : pdf.js (import d'un IM) et SheetJS (export Excel) sont livrés avec l'application et servis par votre site Vercel ; aucun script n'est chargé depuis un site tiers. Le PDF est lu dans le navigateur et n'est envoyé nulle part. Les PDF scannés (images sans texte) ne contiennent pas de texte lisible : copiez-collez alors les extraits utiles dans la fenêtre d'import.
 - **Temps réel** : les mises à jour en direct entre collègues supposent que la publication `supabase_realtime` existe. La migration l'y ajoute si elle existe. Vérifiez dans **Database → Publications** que `supabase_realtime` contient bien les tables `deals` et `activity` ; sinon activez-les (interrupteurs de la ligne `supabase_realtime`). Sans cela, les pages ne se rafraîchissent qu'au rechargement.
 - **Dernier administrateur** : il ne peut être ni rétrogradé, ni refusé, ni remis en attente. Pour changer d'administrateur, nommez d'abord le suivant.
 - **Node 22** : requis par les bibliothèques Supabase. Choisissez Node 22.x dans Vercel (étape 5) ; en local, utilisez Node 22 ou plus.

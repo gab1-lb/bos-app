@@ -1,18 +1,15 @@
-/* Export Excel du dossier (port de exportXlsx de legacy/app.js) ; SheetJS chargé à la demande depuis cdnjs. */
+/* Export Excel du dossier (port de exportXlsx de legacy/app.js) ; SheetJS (paquet npm xlsx) chargé à la demande. */
 import { N } from '../../engine/finance';
 import type { Deal } from '../../engine/types';
 import type { DealMeta } from '../../domain/phases';
 import { fmt, t as tr, type Locale } from '../../i18n/format';
 import type { Computed } from '../../components/project/compute';
 import { TAG } from '../../components/project/verdict';
-import { loadScript } from '../loadScript';
 import { download, slug } from './download';
 import { stageText } from './memo';
 
 export type Cell = string | number | boolean | null;
 export type Sheet = { name: string; aoa: Cell[][]; cols: number[] };
-
-const SHEETJS = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
 const r2 = (v: number | null | undefined): number | null => (v != null && Number.isFinite(v) ? Math.round(v * 1000) / 1000 : null);
 
@@ -69,18 +66,11 @@ export function xlsxSheets(d: Deal, meta: DealMeta, c: Computed, locale: Locale)
   return out;
 }
 
-type SheetJs = {
-  utils: { book_new(): unknown; aoa_to_sheet(aoa: Cell[][]): Record<string, unknown>; book_append_sheet(wb: unknown, ws: unknown, name: string): void };
-  write(wb: unknown, o: { type: 'array'; bookType: 'xlsx' }): ArrayBuffer | Uint8Array;
-};
-
 export const xlsxFileName = (d: Deal) => `BOS_${slug(d.name)}.xlsx`;
 
-/** Construit et télécharge le classeur ; renvoie le nom du fichier. Rejette si SheetJS ne se charge pas. */
+/** Construit et télécharge le classeur ; renvoie le nom du fichier. SheetJS est livré avec l'application. */
 export async function exportXlsx(d: Deal, meta: DealMeta, c: Computed, locale: Locale): Promise<string> {
-  const w = window as unknown as { XLSX?: SheetJs };
-  if (!w.XLSX) await loadScript(SHEETJS);
-  const X = w.XLSX!;
+  const X = await import('xlsx');
   const wb = X.utils.book_new();
   for (const s of xlsxSheets(d, meta, c, locale)) {
     const ws = X.utils.aoa_to_sheet(s.aoa);
@@ -88,6 +78,7 @@ export async function exportXlsx(d: Deal, meta: DealMeta, c: Computed, locale: L
     X.utils.book_append_sheet(wb, ws, s.name);
   }
   const name = xlsxFileName(d);
-  download(name, new Blob([X.write(wb, { type: 'array', bookType: 'xlsx' }) as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const data = X.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+  download(name, new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
   return name;
 }
