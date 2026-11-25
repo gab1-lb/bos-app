@@ -139,13 +139,13 @@ export function Financiers() {
             {kfield('ARR', ['kpi', 'arr'], d.kpi.arr, UM, { ref: d.refs.arr })}
             {kfield(t('Revenus récurrents'), ['kpi', 'recurring'], d.kpi.recurring, '%', { d: 0, ref: d.refs.recurring })}
             {kfield(t('Churn clients'), ['kpi', 'churn'], d.kpi.churn, '%', { ref: d.refs.churn })}
-            {kfield(t('Rétention nette (NRR)'), ['kpi', 'nrr'], d.kpi.nrr, '%', { d: 0 })}
+            {kfield(t('Rétention nette (NRR)'), ['kpi', 'nrr'], d.kpi.nrr, '%', { d: 0, ref: d.refs.nrr })}
             {kfield(t('Top 10 clients'), ['kpi', 'top10'], d.kpi.top10, t('% du CA'), { d: 0, ref: d.refs.top10 })}
-            {kfield(t('Nombre de clients'), ['kpi', 'customers'], d.kpi.customers, '', { d: 0 })}
+            {kfield(t('Nombre de clients'), ['kpi', 'customers'], d.kpi.customers, '', { d: 0, ref: d.refs.customers })}
             {kfield(t('Dette nette'), ['bs', 'netDebt'], d.bs.netDebt, UM, { ref: d.refs.netDebt })}
-            {kfield(t('Éléments assimilés à la dette'), ['bs', 'debtLike'], d.bs.debtLike, UM)}
+            {kfield(t('Éléments assimilés à la dette'), ['bs', 'debtLike'], d.bs.debtLike, UM, { ref: d.refs.debtLike })}
             {kfield(t('VE demandée (100 %)'), ['askPrice'], d.askPrice, UM, { ref: d.refs.askPrice })}
-            {kfield(t('Effectif'), ['kpi', 'employees'], d.kpi.employees, t('ETP'), { d: 0 })}
+            {kfield(t('Effectif'), ['kpi', 'employees'], d.kpi.employees, t('ETP'), { d: 0, ref: d.refs.employees })}
           </div>
         </Card>
       </Reveal>

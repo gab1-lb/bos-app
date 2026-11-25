@@ -450,6 +450,8 @@ dialog footer .mailhint { align-self: center; font-size: 12.5px; color: var(--wa
 /* Fenêtres d'import */
 dialog.tooldlg[open] { display: flex; flex-direction: column; }
 dialog.tooldlg .body { overflow-y: auto; min-height: 0; }
+dialog.tooldlg tr.grp td { background: var(--soft); }
+dialog.tooldlg tr.grp th { text-align: left; }
 .pdficon.json { background: var(--blue-soft); color: var(--blue); }
 .report { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft-2); font-size: 14px; }
 .report > p { display: flex; align-items: center; gap: 8px; }

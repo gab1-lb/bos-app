@@ -4,7 +4,10 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { blankDeal } from '../../engine/samples';
 import type { Deal } from '../../engine/types';
 import { can } from '../../domain/permissions';
-import { IM_FIELDS, applyExtract, dealNameFromFile, extract, patchesFor, pdfPages, type ImKey, type ImResult } from '../../lib/im';
+import {
+  IM_FIELDS, IM_HIST_FIELDS, IM_OTHER_FIELDS, IM_PLAN_FIELDS, applyExtract, dealNameFromFile, extract, extractKeys, importWrites,
+  pdfPages, planValue, type ImResult,
+} from '../../lib/im';
 import { useApp, useI18n } from '../../lib/repo-context';
 import { Icon } from '../ui/Icon';
 
@@ -20,7 +23,7 @@ type Props = {
 /** Import d'un mémorandum d'information : PDF lu dans le navigateur ou texte collé, indicateurs repérés à vérifier puis appliquer. */
 export function ImDialog({ target, onClose }: Props) {
   const { repo, me, toast } = useApp();
-  const { t, pc, meur } = useI18n();
+  const { t, pc, meur, nf, unitM } = useI18n();
   const router = useRouter();
   const ref = useRef<HTMLDialogElement>(null);
   const uid = useId();
@@ -29,7 +32,7 @@ export function ImDialog({ target, onClose }: Props) {
   const [over, setOver] = useState(false);
   const [state, setState] = useState<'idle' | 'reading' | 'failed' | 'pdfTooBig' | 'textTooBig'>('idle');
   const [res, setRes] = useState<ImResult | null>(null);
-  const [selected, setSelected] = useState<Set<ImKey>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 
   useEffect(() => { const d = ref.current; if (d && !d.open) d.showModal(); }, []);
@@ -37,7 +40,7 @@ export function ImDialog({ target, onClose }: Props) {
   const show = (pages: string[]) => {
     const r = extract(pages);
     setRes(r);
-    setSelected(new Set(Object.keys(r.vals) as ImKey[]));
+    setSelected(new Set(extractKeys(r)));
     setState('idle');
   };
 
@@ -60,8 +63,10 @@ export function ImDialog({ target, onClose }: Props) {
     setBusy(true);
     try {
       if (mode === 'open' && target) {
-        const next = applyExtract(target.deal, res, selected, fileName);
-        for (const [path, value] of patchesFor(target.deal, next)) await repo.patchDeal(target.id, path, value);
+        // Leaf patches and list rows appended by id: edits made meanwhile by others are kept.
+        const { patches, items } = importWrites(target.deal, applyExtract(target.deal, res, selected, fileName));
+        for (const [path, value] of patches) await repo.patchDeal(target.id, path, value);
+        for (const { list, item } of items) await repo.appendItem(target.id, list, item);
         onClose();
         router.push(`/projet/${encodeURIComponent(target.id)}/financiers`);
       } else {
@@ -70,16 +75,54 @@ export function ImDialog({ target, onClose }: Props) {
         onClose();
         router.push(`/projet/${encodeURIComponent(id)}/financiers`);
       }
-      toast(t('Données importées. Complétez l’historique.'));
+      toast([...selected].some((k) => k.startsWith('hist.')) ? t('Données importées. Vérifiez-les dans l’onglet Données financières.') : t('Données importées. Complétez l’historique.'));
     } catch (e) {
       toast(t('Enregistrement impossible : {0}', (e as Error)?.message ?? ''), true);
       setBusy(false);
     }
   };
 
-  const found = res ? IM_FIELDS.filter(([k]) => res.vals[k]) : [];
+  const groups = res ? lines(res) : [];
+  const found = groups.flatMap((g) => g.lines);
   const canNew = !!me && can(me, 'create');
-  const toggle = (k: ImKey, on: boolean) => setSelected((s) => { const n = new Set(s); if (on) n.add(k); else n.delete(k); return n; });
+  const toggle = (keys: string[], on: boolean) => setSelected((s) => {
+    const n = new Set(s);
+    for (const k of keys) { if (on) n.add(k); else n.delete(k); }
+    return n;
+  });
+
+  /** Everything found, by group, with the selection key of each line. */
+  function lines(r: ImResult): { id: string; title: string; lines: { key: string; label: string; aria: string; value: string; src: string }[] }[] {
+    const src = (v: { ref: string; line: string }) => `${v.ref} · « ${v.line} »`;
+    const byUnit = (n: number, unit: string) => (unit === '%' ? pc(n) : unit === 'M€' ? meur(n, 2) : nf(n, 0));
+    const series = (years: number[], vals: (number | null)[], f: (n: number) => string) =>
+      years.map((y, i) => `${y} ${vals[i] == null ? '—' : f(vals[i] as number)}`).join(' · ');
+    const hist = t('Historique'), plan = t('Plan d’affaires');
+    return [
+      { id: 'key', title: t('Chiffres clés'), lines: IM_FIELDS.filter(([k]) => r.vals[k]).map(([k, label, unit]) => {
+        const v = r.vals[k]!;
+        return { key: k, label: t(label), aria: t(label), value: byUnit(v.n, unit), src: src(v) };
+      }) },
+      { id: 'hist', title: hist, lines: IM_HIST_FIELDS.filter(([k]) => r.hist[k]).map(([k, label]) => {
+        const row = r.hist[k]!;
+        return { key: `hist.${k}`, label: `${t(label)} (${unitM()})`, aria: `${t(label)} · ${hist}`, value: series(row.years, row.vals, (n) => nf(n, 1)), src: src(row) };
+      }) },
+      { id: 'plan', title: plan, lines: IM_PLAN_FIELDS.filter(([k]) => r.plan[k]).map(([k, label]) => {
+        const row = r.plan[k]!;
+        const v = planValue(row, k);
+        const value = Array.isArray(v) ? v.map((x) => (x == null ? '—' : pc(x, 1))).join(' · ') : `${pc(v as number, 1)} (${row.years[row.years.length - 1]})`;
+        return { key: `plan.${k}`, label: t(label), aria: `${t(label)} · ${plan}`, value, src: src(row) };
+      }) },
+      { id: 'adj', title: t('Retraitements'), lines: r.adjustments.map((a, i) => ({
+        key: `adj.${i}`, label: a.label, aria: a.label,
+        value: `${meur(a.amount, 2)} · ${a.included ? t('inclus par le vendeur') : t('non inclus par le vendeur')}`, src: src(a),
+      })) },
+      { id: 'other', title: t('Autres'), lines: IM_OTHER_FIELDS.filter(([k]) => r.other[k]).map(([k, label, unit]) => {
+        const v = r.other[k]!;
+        return { key: k, label: t(label), aria: t(label), value: byUnit(v.n, unit), src: src(v) };
+      }) },
+    ].filter((g) => g.lines.length > 0);
+  }
 
   return (
     <dialog ref={ref} className="tooldlg" aria-labelledby={`${uid}-h`} onClose={onClose} onCancel={(e) => { e.preventDefault(); onClose(); }}>
@@ -116,19 +159,28 @@ export function ImDialog({ target, onClose }: Props) {
               <div className="tw">
                 <table>
                   <thead><tr><th /><th>{t('Indicateur')}</th><th className="n">{t('Valeur')}</th><th>{t('Source')}</th></tr></thead>
-                  <tbody>
-                    {found.map(([k, label, unit]) => {
-                      const v = res.vals[k]!;
-                      return (
-                        <tr key={k} data-extract-row={k}>
-                          <td><input type="checkbox" checked={selected.has(k)} aria-label={t(label)} onChange={(e) => toggle(k, e.target.checked)} /></td>
-                          <td>{t(label)}</td>
-                          <td className="n">{unit === '%' ? pc(v.n) : meur(v.n, 2)}</td>
-                          <td className="wrapc mini">{v.ref} · « {v.line} »</td>
+                  {groups.map((g) => {
+                    const keys = g.lines.map((l) => l.key);
+                    const on = keys.filter((k) => selected.has(k)).length;
+                    return (
+                      <tbody key={g.id} data-extract-group={g.id}>
+                        <tr className="grp">
+                          <td><input type="checkbox" checked={on === keys.length} aria-label={g.title}
+                            ref={(el) => { if (el) el.indeterminate = on > 0 && on < keys.length; }}
+                            onChange={(e) => toggle(keys, e.target.checked)} /></td>
+                          <th colSpan={3} scope="colgroup">{g.title}</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
+                        {g.lines.map((l) => (
+                          <tr key={l.key} data-extract-row={l.key}>
+                            <td><input type="checkbox" checked={selected.has(l.key)} aria-label={l.aria} onChange={(e) => toggle([l.key], e.target.checked)} /></td>
+                            <td>{l.label}</td>
+                            <td className="n">{l.value}</td>
+                            <td className="wrapc mini">{l.src}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    );
+                  })}
                 </table>
               </div>
               <p className="note">{res.year ? t('Exercice détecté : {0}.', res.year) + ' ' : ''}{t('Vérifiez chaque valeur avant de l’appliquer.')}</p>

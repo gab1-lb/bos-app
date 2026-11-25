@@ -6,6 +6,7 @@ import { blankDeal } from '../src/engine/samples';
 
 const FIXTURE = join(__dirname, 'fixtures', 'legacy-v1.json');
 const IM_PDF = join(__dirname, 'fixtures', 'im-atlas.pdf');
+const IM_KEPLER = join(__dirname, 'fixtures', 'im-kepler.pdf');
 
 type Hooks = { __bosRepo: { createDeal(d: unknown): Promise<string> } };
 
@@ -219,6 +220,39 @@ test('import d’IM en PDF : pdf.js livré avec l’application lit le fichier e
   expect(errors).toEqual([]);
 });
 
+test('import d’IM complet (PDF Kepler) : historique, plan, retraitements et autres données remplis sans saisie', async ({ page }) => {
+  const errors = watchErrors(page);
+  await loginAs(page, 'analyst');
+  await openDossiers(page);
+  await page.getByRole('button', { name: 'Importer un IM' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.locator('input[type="file"]').setInputFiles(IM_KEPLER);
+  const groups = dialog.locator('[data-extract-group]');
+  await expect(groups).toHaveCount(5);
+  await expect(dialog.locator('[data-extract-row]')).toHaveCount(8 + 3 + 3 + 2 + 8);
+  await expect(dialog.locator('[data-extract-row="hist.rev"]')).toContainText('2021 7,9');
+  await expect(dialog.locator('[data-extract-row="plan.growth"]')).toContainText('15,0 %');
+  await expect(dialog.locator('[data-extract-group="adj"]')).toContainText('Rémunération du dirigeant ramenée au marché');
+  await expect(dialog.locator('[data-extract-group="adj"]')).not.toContainText('Note du conseil');
+  // Unticking a group leaves its lines out.
+  await dialog.getByRole('checkbox', { name: 'Autres', exact: true }).uncheck();
+  await expect(dialog.getByRole('checkbox', { name: 'Taux d’impôt' })).not.toBeChecked();
+  await dialog.getByRole('checkbox', { name: 'Autres', exact: true }).check();
+  await dialog.getByRole('button', { name: 'Créer un nouveau dossier' }).click();
+  await expect(page).toHaveURL(/\/projet\/[^/]+\/financiers$/);
+  await expect(page.locator('#f-hist\\.rev\\.0')).toHaveValue('7,9');
+  await expect(page.locator('#f-hist\\.rev\\.4')).toHaveValue('15,2');
+  await expect(page.locator('#f-kpi\\.customers')).toHaveValue(/^2\s300$/);
+  await expect(page.locator('#f-plan\\.taxRate')).toHaveValue('25,0');
+  await expect(page.locator('#f-bs\\.debtLike')).toHaveValue('0,6');
+  await expect(page.locator('#f-adjustments\\.1\\.label')).toHaveValue('Honoraires de conseil liés à la cession');
+  await expect(page.locator('#f-adjustments\\.1\\.amount')).toHaveValue('0,15');
+  await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Synthèse' }).click();
+  await expect(page).toHaveURL(/\/synthese$/);
+  await expect(page.getByText('+17,8 %').first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('en-tête du projet : note de comité et Excel téléchargés, IM appliqué au dossier ouvert', async ({ page }) => {
   // SheetJS is bundled with the app: no request may leave the app's origin.
   const outside = watchOutside(page);
@@ -244,11 +278,14 @@ test('en-tête du projet : note de comité et Excel téléchargés, IM appliqué
 
   await page.getByRole('button', { name: 'Importer un IM' }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Ou collez des extraits de l’IM').fill('Dette nette : 2,5 M€');
+  await dialog.getByLabel('Ou collez des extraits de l’IM').fill('Dette nette : 2,5 M€\nPrime exceptionnelle : 0,10 M€ (non inclus)\nRémunération du dirigeant ramenée au marché : 0,15 M€ (inclus)');
   await dialog.getByRole('button', { name: 'Analyser le texte' }).click();
   await dialog.getByRole('button', { name: 'Appliquer au dossier ouvert' }).click();
   await expect(page).toHaveURL(/\/projet\/demo-helios\/financiers$/);
   await expect(page.locator('#f-bs\\.netDebt')).toHaveValue('2,5');
+  // The new adjustment is appended by id; the one already in the deal (same label) is not duplicated.
+  await expect(page.locator('#f-adjustments\\.3\\.label')).toHaveValue('Prime exceptionnelle');
+  await expect(page.locator('#f-adjustments\\.4\\.label')).toHaveCount(0);
 });
 
 test('admin : mandat et modèles de messages', async ({ page }) => {
