@@ -119,6 +119,10 @@ insert into public.mandate (data) values ('{"ebitdaMin":2}');
 update public.mandate set data = '{"ebitdaMin":3}';
 insert into public.templates (key, locale, subject, body) values ('info_request', 'fr', 'S', 'B');
 select test.ok((select count(*) = 1 from public.invites), 'admin: can write invites');
+insert into public.invites (email, role) values ('next@partner.example', 'reader')
+  on conflict (email) do update set role = excluded.role;
+select test.ok((select count(*) = 1 and bool_and(role = 'reader') from public.invites), 'admin: re-invite (upsert) updates the role');
+update public.invites set role = 'analyst' where email = 'next@partner.example';
 select test.ok((select data->>'ebitdaMin' = '3' from public.mandate), 'admin: can write mandate');
 
 -- an admin decision is not overridden by a later e-mail confirmation
@@ -426,6 +430,24 @@ select test.throws($$update public.members set status = 'denied' where id = '000
 -- restore (as the owner)
 update public.members set role = 'admin' where id = '00000000-0000-0000-0000-0000000000a1';
 select test.ok((select count(*) = 2 from public.members where role = 'admin' and status = 'active'), 'two active admins after restore');
+
+-- ---------------------------------------------------------------- a departed user can be deleted
+-- deals they owned, validated or last updated stay, with those references cleared
+insert into auth.users (id, email, email_confirmed_at) values ('00000000-0000-0000-0000-0000000000b9', 'gone@bos.example', now());
+update public.members set role = 'associate', status = 'active' where id = '00000000-0000-0000-0000-0000000000b9';
+set role authenticated;
+select test.as_user('00000000-0000-0000-0000-0000000000b9');
+select public.create_deal('{"name":"Legacy of a leaver"}') as d9 \gset
+select public.set_phase(:'d9', 'associate_review');
+select test.as_user('00000000-0000-0000-0000-0000000000a1');
+select public.validate_bote(:'d9');
+select test.as_user('00000000-0000-0000-0000-0000000000b9');
+select public.patch_deal(:'d9', '{thesis}', '"t"');
+reset role;
+update public.deals set validated_by = '00000000-0000-0000-0000-0000000000b9' where id = :'d9';
+delete from auth.users where id = '00000000-0000-0000-0000-0000000000b9';
+select test.ok((select owner_id is null and validated_by is null and updated_by is null and data->>'thesis' = 't'
+                from public.deals where id = :'d9'), 'deleting a user keeps their deals, references set null');
 
 \o
 \echo 'rls.test.sql: all assertions passed'

@@ -103,6 +103,8 @@ Si vous ajoutez plus tard un domaine personnalisé, ajoutez aussi son `/auth/cal
 - **Collègues du domaine** : ils se connectent avec leur compte Google et arrivent sur une page d'attente. Dans **Administration**, choisissez leur rôle (**Admin**, **Associate**, **Analyste** ou **Lecteur**) et cliquez sur **Approuver**. Vous pouvez aussi **Refuser** une demande ou **Retirer l'accès** plus tard.
 - **Personnes hors domaine** (conseils, partenaires) : dans **Administration**, section **Inviter une personne**, saisissez leur adresse e-mail Google et un rôle. Dès leur première connexion avec cette adresse, ils sont acceptés avec ce rôle. Sans invitation, une personne hors domaine est refusée. Cela suppose un écran de consentement **External** et publié (étape 4a) : avec **Internal**, Google les bloque avant BOS.
 
+Quand quelqu'un quitte l'équipe, utilisez **Retirer l'accès** dans **Administration** : son nom reste attaché à l'historique. Supprimer son compte dans **Supabase → Authentication → Users** est aussi possible ; ses dossiers restent, sans responsable (un associé ou un administrateur en désigne un nouveau dans l'onglet **Demandes d'infos**, carte **Fiche du dossier**).
+
 Au moins un administrateur actif doit toujours exister : l'application (et la base de données) empêche de retirer ou de refuser le dernier.
 
 ## Dossier de démonstration (facultatif)

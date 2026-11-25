@@ -57,7 +57,7 @@ create table public.templates (
 create table public.deals (
   id uuid primary key default gen_random_uuid(),
   data jsonb not null check (jsonb_typeof(data) = 'object'),
-  owner_id uuid references public.members (id),
+  owner_id uuid references public.members (id) on delete set null,
   contributor_ids uuid[] not null default '{}',
   phase text not null default 'im_received'
     check (phase in ('im_received', 'analysis', 'bote_written', 'associate_review', 'committee', 'decided')),
@@ -65,11 +65,11 @@ create table public.deals (
   decision text check (decision in ('go_dd', 'indicative_offer', 'no_go')),
   decided_at timestamptz,
   committee_date date,
-  validated_by uuid references public.members (id),
+  validated_by uuid references public.members (id) on delete set null,
   validated_at timestamptz,
   archived boolean not null default false,
   updated_at timestamptz not null default now(),
-  updated_by uuid references public.members (id)
+  updated_by uuid references public.members (id) on delete set null
 );
 
 create table public.activity (
@@ -639,30 +639,31 @@ alter table public.deals        enable row level security;
 alter table public.activity     enable row level security;
 
 -- Readable by every active member with a role.
+-- (select …) lets Postgres evaluate has_role once per query instead of once per row.
 create policy deals_read on public.deals for select to authenticated
-  using (public.has_role(array['admin', 'associate', 'analyst', 'reader']));
+  using ((select public.has_role(array['admin', 'associate', 'analyst', 'reader'])));
 create policy activity_read on public.activity for select to authenticated
-  using (public.has_role(array['admin', 'associate', 'analyst', 'reader']));
+  using ((select public.has_role(array['admin', 'associate', 'analyst', 'reader'])));
 create policy members_read on public.members for select to authenticated
-  using (public.has_role(array['admin', 'associate', 'analyst', 'reader']));
+  using ((select public.has_role(array['admin', 'associate', 'analyst', 'reader'])));
 create policy members_read_self on public.members for select to authenticated
-  using (id = auth.uid());
+  using (id = (select auth.uid()));
 create policy mandate_read on public.mandate for select to authenticated
-  using (public.has_role(array['admin', 'associate', 'analyst', 'reader']));
+  using ((select public.has_role(array['admin', 'associate', 'analyst', 'reader'])));
 create policy templates_read on public.templates for select to authenticated
-  using (public.has_role(array['admin', 'associate', 'analyst', 'reader']));
+  using ((select public.has_role(array['admin', 'associate', 'analyst', 'reader'])));
 
 -- Admin only.
 create policy members_admin_update on public.members for update to authenticated
-  using (public.has_role(array['admin'])) with check (public.has_role(array['admin']));
+  using ((select public.has_role(array['admin']))) with check ((select public.has_role(array['admin'])));
 create policy invites_admin on public.invites for all to authenticated
-  using (public.has_role(array['admin'])) with check (public.has_role(array['admin']));
+  using ((select public.has_role(array['admin']))) with check ((select public.has_role(array['admin'])));
 create policy mandate_admin on public.mandate for all to authenticated
-  using (public.has_role(array['admin'])) with check (public.has_role(array['admin']));
+  using ((select public.has_role(array['admin']))) with check ((select public.has_role(array['admin'])));
 create policy templates_admin on public.templates for all to authenticated
-  using (public.has_role(array['admin'])) with check (public.has_role(array['admin']));
+  using ((select public.has_role(array['admin']))) with check ((select public.has_role(array['admin'])));
 create policy app_settings_admin on public.app_settings for all to authenticated
-  using (public.has_role(array['admin'])) with check (public.has_role(array['admin']));
+  using ((select public.has_role(array['admin']))) with check ((select public.has_role(array['admin'])));
 
 -- =====================================================================================
 -- Privileges (Supabase grants everything to anon/authenticated by default; narrow it).
