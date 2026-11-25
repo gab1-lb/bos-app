@@ -11,7 +11,8 @@ const VIEWS = { synthese: Synthese, financiers: Financiers, valorisation: Valori
 
 export default function ProjectTabPage() {
   const { tab } = useParams<{ tab: string }>();
+  // Own keys only: /projet/x/constructor must be a 404, not Object.prototype.constructor.
+  if (!Object.hasOwn(VIEWS, tab)) notFound();
   const View = VIEWS[tab as keyof typeof VIEWS];
-  if (!View) notFound();
   return <View />;
 }

@@ -178,3 +178,10 @@ test('fiche du dossier : un associate change le responsable, un analyste ajoute 
   await openTab(page, 'Activité');
   await expect(page.locator('.logrow').first()).toContainText('Responsable');
 });
+
+test('un nom d’onglet inconnu (même « constructor ») mène à une page 404', async ({ page }) => {
+  for (const tab of ['constructor', 'toString', 'nope']) {
+    await page.goto(`/projet/${DEMO}/${tab}`);
+    await expect(page.getByText('404')).toBeVisible();
+  }
+});

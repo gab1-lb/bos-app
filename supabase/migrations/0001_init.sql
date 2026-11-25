@@ -88,11 +88,6 @@ create index activity_deal_at_idx on public.activity (deal_id, at desc);
 -- Identity helpers
 -- =====================================================================================
 
-create function public.current_member() returns public.members
-language sql stable security definer set search_path = public as $$
-  select * from public.members where id = auth.uid();
-$$;
-
 create function public.has_role(roles text[]) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (
@@ -696,7 +691,6 @@ alter default privileges in schema public revoke execute on functions from anon,
 -- is added in the migration that creates it.
 alter default privileges revoke execute on functions from public;
 grant execute on function
-  public.current_member(),
   public.has_role(text[]),
   public.create_deal(jsonb),
   public.import_deal(jsonb, jsonb),

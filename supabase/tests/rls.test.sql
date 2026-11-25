@@ -28,6 +28,10 @@ end $$;
 create function test.as_user(p_uid uuid) returns void language sql as $$
   select set_config('test.uid', coalesce(p_uid::text, ''), false);
 $$;
+-- the caller's own member row, read through RLS (security invoker)
+create function test.me() returns public.members language sql stable as $$
+  select * from public.members where id = auth.uid();
+$$;
 grant execute on all functions in schema test to anon, authenticated;
 
 -- ---------------------------------------------------------------- signup
@@ -98,7 +102,7 @@ select test.ok(not has_function_privilege('anon', 'public.zz_probe_fn()', 'execu
                'default privileges: new functions not executable by anon/authenticated');
 drop function public.zz_probe_fn();
 drop table public.zz_probe;
-select test.ok(not exists (select 1 from pg_proc where proname = '_touch'), 'unused _touch removed');
+select test.ok(not exists (select 1 from pg_proc where proname in ('_touch', 'current_member')), 'unused _touch / current_member removed');
 
 -- ---------------------------------------------------------------- admin approves members
 set role authenticated;
@@ -159,7 +163,7 @@ select test.ok((select count(*) = 1 and bool_and(status = 'pending') from public
 select test.ok((select count(*) = 0 from public.members where id <> '00000000-0000-0000-0000-0000000000e1'), 'pending: no other members visible');
 select test.ok((select count(*) = 0 from public.mandate), 'pending: no mandate visible');
 select test.ok((select count(*) = 0 from public.templates), 'pending: no templates visible');
-select test.ok((select status = 'pending' from public.current_member()), 'pending: current_member() returns own row');
+select test.ok((select status = 'pending' from test.me()), 'pending: own member row readable through RLS');
 select test.ok(not public.has_role(array['admin','associate','analyst','reader']), 'pending: has_role false');
 select test.throws($$select public.create_deal('{"name":"x"}')$$, '42501', 'pending: create_deal refused');
 select test.throws(format('select public.patch_deal(%L, %L, %L)', :'d1', '{name}', '"x"'), '42501', 'pending: patch_deal refused');
@@ -194,7 +198,7 @@ select test.throws(format('select public.deal_list_append(%L, %L, %L)', :'d1', '
 select test.throws(format('select public.deal_list_remove(%L, %L, %L)', :'d1', 'questions', 'r'), '42501', 'reader: deal_list_remove refused');
 select test.throws(format('select public.deal_list_update(%L, %L, %L, %L)', :'d1', 'questions', 'r', '{"q":"x"}'), '42501', 'reader: deal_list_update refused');
 select public.set_my_locale('en');
-select test.ok((select locale = 'en' from public.current_member()), 'reader: set_my_locale(en) ok');
+select test.ok((select locale = 'en' from test.me()), 'reader: set_my_locale(en) ok');
 select test.throws($$select public.set_my_locale('de')$$, '22023', 'set_my_locale: unknown locale rejected');
 
 -- ---------------------------------------------------------------- analyst ana2 on ana1's deal
@@ -300,7 +304,7 @@ select test.throws(format('update public.deals set phase = %L where id = %L', 'd
 select test.throws(format('delete from public.deals where id = %L', :'d1'), '42501', 'analyst: direct delete from deals refused');
 select test.throws(format('insert into public.activity (deal_id, kind) values (%L, %L)', :'d1', 'patch'), '42501', 'analyst: direct insert into activity refused');
 update public.members set role = 'admin' where id = '00000000-0000-0000-0000-0000000000b2';
-select test.ok((select role = 'analyst' from public.current_member()), 'analyst: update of members has no effect (RLS)');
+select test.ok((select role = 'analyst' from test.me()), 'analyst: update of members has no effect (RLS)');
 select test.throws($$update public.members set name = 'x' where id = '00000000-0000-0000-0000-0000000000b2'$$, '42501', 'analyst: members.name not updatable');
 select test.throws($$insert into public.invites (email, role) values ('a@b.c', 'admin')$$, '42501', 'analyst: cannot write invites');
 update public.mandate set data = '{}';
@@ -359,7 +363,7 @@ select test.throws(format('select public.set_owner(%L, %L)', :'d1', '00000000-00
                    'set_owner: reader cannot own a deal');
 select test.throws($$insert into public.invites (email, role) values ('a@b.c', 'analyst')$$, '42501', 'associate: cannot write invites');
 update public.members set role = 'admin' where id = '00000000-0000-0000-0000-0000000000c2';
-select test.ok((select role = 'associate' from public.current_member()), 'associate: update of own member row has no effect (RLS)');
+select test.ok((select role = 'associate' from test.me()), 'associate: update of own member row has no effect (RLS)');
 
 select public.import_deal('{"name":"Imported","id":"legacy-1"}',
   '{"phase":"decided","decision":"no_go","decidedAt":"2025-01-02T00:00:00Z","phaseEnteredAt":"2025-01-02T00:00:00Z","ownerId":"00000000-0000-0000-0000-0000000000b1"}') as d4 \gset
