@@ -5,6 +5,10 @@ import type { Repo } from '../data';
 import type { Member, MemberStatus, Role } from '../domain/permissions';
 
 export const isMemoryMode = () => process.env.NEXT_PUBLIC_DATA_MODE === 'memory';
+/** Public demo build (memory data, visitors enter without an account). */
+export const isDemo = () => isMemoryMode() && process.env.NEXT_PUBLIC_DEMO === '1';
+/** Role a demo visitor starts with. */
+export const DEMO_ROLE = 'analyst';
 
 /** Memory mode only: the "session" is this cookie, holding a persona id. */
 export const MEMORY_COOKIE = 'bos_as';

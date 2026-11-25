@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { MEMORY_COOKIE, MEMORY_MEMBERS_COOKIE, isMemoryMode, memoryStatus, parseOverrides, personaIdForRole } from './lib/session';
+import { DEMO_ROLE, MEMORY_COOKIE, MEMORY_MEMBERS_COOKIE, isDemo, isMemoryMode, memoryStatus, parseOverrides, personaIdForRole } from './lib/session';
 
 const PUBLIC = ['/login', '/auth/callback', '/attente'];
 const isPublic = (path: string) => PUBLIC.some((p) => path === p || path.startsWith(`${p}/`));
@@ -23,15 +23,18 @@ async function memoryGate(req: NextRequest) {
   const overrides = parseOverrides(req.cookies.get(MEMORY_MEMBERS_COOKIE)?.value);
   if (path === '/login') {
     const id = personaIdForRole(req.nextUrl.searchParams.get('as'));
-    if (!id) return NextResponse.next();
+    if (!id) return isDemo() ? redirect(req, `/login?as=${DEMO_ROLE}`) : NextResponse.next();
     const status = memoryStatus(id, overrides);
-    const res = redirect(req, status === 'pending' || status === 'denied' ? NOT_ACTIVE[status] : '/');
+    const next = req.nextUrl.searchParams.get('next');
+    const home = next && /^\/(?![/\\])/.test(next) && !next.startsWith('/login') ? next : '/';
+    const res = redirect(req, status === 'pending' || status === 'denied' ? NOT_ACTIVE[status] : home);
     res.cookies.set(MEMORY_COOKIE, id, { path: '/', sameSite: 'lax' });
     return res;
   }
   if (isPublic(path)) return NextResponse.next();
   const status = memoryStatus(req.cookies.get(MEMORY_COOKIE)?.value, overrides);
-  if (status === 'none') return redirect(req, '/login');
+  // Demo visitors enter straight away, on the page their link pointed to.
+  if (status === 'none') return redirect(req, isDemo() ? `/login?as=${DEMO_ROLE}&next=${encodeURIComponent(path + req.nextUrl.search)}` : '/login');
   if (status === 'pending' || status === 'denied') return redirect(req, NOT_ACTIVE[status]);
   return NextResponse.next();
 }
@@ -71,5 +74,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|terrain\\.svg$|tour-(?:fr|en)\\.mp4$|tour-poster\\.jpg$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|terrain\\.svg$|tour-(?:fr|en)\\.mp4$|tour-poster\\.jpg$|demo/.*\\.pdf$).*)'],
 };

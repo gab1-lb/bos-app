@@ -1,5 +1,11 @@
 // Dictionnaire FR -> EN (repris de legacy/en.js)
 export const EN: Record<string, string> = {
+  "Démo publique": "Public demo",
+  "Données fictives, rien n’est enregistré : recharger la page remet la démo à zéro.": "Fictitious data, nothing is saved: reloading the page resets the demo.",
+  "Voir en tant que": "View as",
+  "IM fictif à importer (PDF)": "Sample IM to import (PDF)",
+  "Associé": "Associate",
+  "Administrateur": "Administrator",
   "Analyse en cours": "Analysis in progress",
   "BOTe rédigé": "BOTe drafted",
   "Revue associate": "Associate review",

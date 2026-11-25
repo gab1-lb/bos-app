@@ -6,9 +6,19 @@ import '../styles/bos.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
+const DESCRIPTION = 'BOS : l’outil de l’analyste M&A pour le BOTe (Business Overview) des cibles, de l’import de l’IM à la décision du comité.';
+
 export const metadata: Metadata = {
+  // Set by scripts/netlify-build.mjs from Netlify's URL: absolute links for the preview card when the site is shared.
+  ...(process.env.NEXT_PUBLIC_SITE_URL ? { metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL) } : {}),
   title: 'BOS',
-  description: 'BOTe (Business Overview) des cibles M&A',
+  description: DESCRIPTION,
+  openGraph: {
+    title: 'BOS · Business Overview M&A',
+    description: DESCRIPTION,
+    images: [{ url: '/tour-poster.jpg' }],
+    type: 'website',
+  },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

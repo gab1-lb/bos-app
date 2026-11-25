@@ -42,6 +42,7 @@ a { color: inherit; text-decoration: none; }
 .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #eaf0ff; color: #3055b0; border: 1px solid var(--blue-line); font-size: 13px; font-weight: 650; }
 .savestate { font-size: 12px; color: var(--faint); white-space: nowrap; }
 @media (max-width: 900px) { .nav a span, .personal, .savestate { display: none; } .topbar .wrap { gap: 12px; } }
+@media (max-width: 520px) { .topbar .vdiv { display: none; } .topbar .wrap { gap: 8px; } .brand { font-size: 22px; } .brand svg { width: 28px; height: 26px; } .lang .icon { display: none; } .lang select { max-width: 74px; } .nav { gap: 2px; } }
 
 /* Page */
 main { padding-block: 22px 64px; }
@@ -550,3 +551,15 @@ dialog.tourdlg video { display: block; width: 100%; height: auto; max-height: ca
 /* Inline deal rename */
 .h1in { font-size: clamp(26px, 2.6vw, 38px); font-weight: 650; letter-spacing: -1px; padding: 4px 10px; min-width: min(520px, 100%); }
 .iconbtn.rename:hover { color: var(--blue); background: var(--soft); }
+
+/* Public demo banner */
+.demobar { background: var(--navy-1); color: #dfe7f7; font-size: 12.5px; }
+.demobar .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 18px; padding-top: 7px; padding-bottom: 7px; }
+.demobar .demotxt { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.demobar .demotxt b { color: #fff; font-weight: 650; }
+.demobar .demotxt .icon { width: 15px; height: 15px; color: #8fb0ff; }
+.demobar .demoroles { display: inline-flex; align-items: center; gap: 4px; color: #a9b8d6; }
+.demobar .demoroles a { color: #dfe7f7; text-decoration: none; padding: 3px 9px; border-radius: 999px; }
+.demobar .demoroles a:hover { background: rgba(255,255,255,.08); }
+.demobar .demoroles a.on { background: #3e6cfa; color: #fff; }
+.demobar .demoim { color: #8fb0ff; text-decoration: underline; text-underline-offset: 2px; }

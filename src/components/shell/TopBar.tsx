@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useI18n, useMe, useRepo } from '../../lib/repo-context';
 import { Icon, Logo, type IconName } from '../ui/Icon';
+import { isDemo } from '../../lib/session';
 import { LocaleSwitch } from './LocaleSwitch';
 import { SignOutButton } from './SignOutButton';
 import { getLastDeal } from './lastDeal';
@@ -57,7 +58,7 @@ export function TopBar() {
               <span className="avatar" title={me.name}>{initials(me.name) || <Icon name="user" />}</span>
             </span>
           )}
-          <SignOutButton className="signout" label={t('Se déconnecter')} />
+          {!isDemo() && <SignOutButton className="signout" label={t('Se déconnecter')} />}
         </div>
       </div>
     </header>
