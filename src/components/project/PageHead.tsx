@@ -48,6 +48,7 @@ export function PageHead() {
           <div className="titleline">
             <h1>{d.name}</h1>
             {d.example && <span className="tag">{t('Dossier exemple')}</span>}
+            {meta.archived && <span className="tag archived" data-archived>{t('Archivé')}</span>}
           </div>
           <div className="meta">
             <span><Icon name="building" />{d.sector || t('Secteur à préciser')}</span><i className="sep">·</i>
@@ -65,6 +66,12 @@ export function PageHead() {
           {editable && <button type="button" className="btn primary" onClick={() => setIm(true)}><Icon name="upload" />{t('Importer un IM')}</button>}
         </div>
       </div>
+      {meta.archived && (
+        <div className="archivedbar" role="note">
+          <Icon name="folder" />
+          <span><b>{t('Dossier archivé')}</b> · {t('Il n’apparaît plus sur l’accueil ni dans les dossiers en cours. Il reste modifiable.')}</span>
+        </div>
+      )}
       {im && <ImDialog target={{ id, deal: d, editable }} onClose={() => setIm(false)} />}
       {msg && (
         <MessageDialog key={`${msg.key}:${locale}`} rec={{ deal: d, meta }} waits={waitsFor(d, meta, msg.at)} mandate={mandate}

@@ -185,3 +185,15 @@ test('un nom d’onglet inconnu (même « constructor ») mène à une page 404'
     await expect(page.getByText('404')).toBeVisible();
   }
 });
+
+test('un dossier archivé l’affiche dans l’en-tête du projet', async ({ page }) => {
+  await page.goto('/login?as=admin');
+  await page.goto(`/projet/${DEMO}/synthese`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Projet Hélios' })).toBeVisible();
+  await expect(page.locator('[data-archived]')).toHaveCount(0);
+  await page.evaluate(async (id) => {
+    await (window as unknown as { __bosRepo: { archive(id: string, v: boolean): Promise<void> } }).__bosRepo.archive(id, true);
+  }, DEMO);
+  await expect(page.locator('[data-archived]')).toHaveText('Archivé');
+  await expect(page.getByRole('note').filter({ hasText: 'Dossier archivé' })).toBeVisible();
+});
