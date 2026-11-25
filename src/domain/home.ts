@@ -4,6 +4,7 @@ import { screen } from '../engine/screen';
 import type { DealMeta } from './phases';
 import { parisDayNumber, waitsFor, type Wait } from './waits';
 import { t, type Locale } from '../i18n/format';
+import { dealHighlights, type Highlights } from './highlights';
 
 export type HomeCard = {
   meta: DealMeta;
@@ -13,6 +14,7 @@ export type HomeCard = {
   waits: Wait[];
   coverage: { known: number; total: number };
   suggestion: string | null;
+  highlights: Highlights;
 };
 
 const count = (w: Wait[], level: Wait['level']) => w.filter((x) => x.level === level).length;
@@ -35,6 +37,7 @@ export function homeCards(
       waits,
       coverage: { known: s.crit.filter((c) => c.pts != null).length, total: s.crit.length },
       suggestion: suggest(meta, waits),
+      highlights: dealHighlights(deal, meta, mandate, now),
     };
   };
   return items

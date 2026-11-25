@@ -120,3 +120,18 @@ test('variables à compléter listées quand le dossier est incomplet', async ({
   await expect(dialog.getByLabel('Message', { exact: true })).toContainText('[à compléter]');
   await expect(dialog.locator('[data-missing]')).toContainText('Chiffre d’affaires');
 });
+
+test('points positifs / négatifs / à approfondir, FR puis EN', async ({ page }) => {
+  const card = page.locator('[data-deal-card="demo-helios"]');
+  await expect(card.getByRole('heading', { name: 'Points positifs' })).toBeVisible();
+  await expect(card.getByRole('heading', { name: 'Points négatifs' })).toBeVisible();
+  await expect(card.getByRole('heading', { name: 'À approfondir' })).toBeVisible();
+  await expect(card.locator('[data-hl="positives"]')).toContainText('Récurrence');
+  await expect(card.locator('[data-hl="toExplore"]')).toContainText('Questions décisives ouvertes');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByLabel('Langue').selectOption('en');
+  await expect(card.getByRole('heading', { name: 'Strengths' })).toBeVisible();
+  await expect(card.getByRole('heading', { name: 'Weaknesses' })).toBeVisible();
+  await expect(card.getByRole('heading', { name: 'To investigate' })).toBeVisible();
+  await expect(card.locator('[data-hl="positives"]')).toContainText('Recurring revenue');
+});

@@ -394,7 +394,18 @@ button.step:disabled { cursor: default; }
 .wd { min-width: 44px; text-align: right; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
 .wd.late { color: var(--orange); } .wd.overdue { color: var(--bad); }
 .chip.orange { background: #fff1ea; color: #c2531f; border-color: #f6cdb9; }
+.hc-props > li.hc-hl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.hc-hl::before { display: none; }
+.hl h3 { margin: 0 0 6px; font-size: 12px; font-weight: 650; letter-spacing: .02em; text-transform: uppercase; }
+.hl.good h3 { color: var(--good, #1a7f4b); } .hl.bad h3 { color: var(--bad); } .hl.amber h3 { color: #b7791f; }
+.hl ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.hl li { position: relative; padding-left: 12px; font-size: 13.5px; line-height: 1.35; }
+.hl li::before { content: ""; position: absolute; left: 0; top: .55em; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.hl.good li::before { background: var(--good, #1a7f4b); } .hl.bad li::before { background: var(--bad); } .hl.amber li::before { background: #d69e2e; }
+.hl li.more::before { display: none; } .hl li.more { padding-left: 0; }
+.hl p { margin: 0; font-size: 13px; }
 @media (max-width: 720px) {
+  .hc-props > li.hc-hl { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .hc-props { margin-left: 20px; }
   .hc-props > li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .hc-props > li::before { left: -12px; top: 16px; }
