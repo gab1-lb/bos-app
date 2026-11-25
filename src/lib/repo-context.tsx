@@ -6,7 +6,7 @@ import { createSupabaseRepo } from '../data/supabaseRepo';
 import type { Member } from '../domain/permissions';
 import { fmt, t, type Locale } from '../i18n/format';
 import { LOCALE_COOKIE } from '../i18n/pickLocale';
-import { getMemorySessionRepo, isMemoryMode } from './session';
+import { MEMORY_COOKIE, getMemorySessionRepo, isMemoryMode } from './session';
 import { createClient } from './supabase/client';
 
 type Toast = { msg: string; bad: boolean; key: number };
@@ -36,9 +36,15 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
     r.me().then((m) => { if (live) setMe(m); }).catch(() => {});
     if (process.env.NEXT_PUBLIC_DATA_MODE === 'memory') {
       // E2E hook, memory mode only (literal check so production builds drop it).
-      const w = window as unknown as { __bosRepo?: Repo; __bosGo?: (p: string) => void };
+      const w = window as unknown as { __bosRepo?: Repo; __bosGo?: (p: string) => void; __bosAs?: (id: string) => Promise<void> };
       w.__bosRepo = r;
       w.__bosGo = (p: string) => router.push(p);
+      // Another teammate takes the keyboard without a reload, so the in-memory deals survive (multi-user e2e paths).
+      w.__bosAs = async (id: string) => {
+        (r as Repo & { asMember(id: string): void }).asMember(id);
+        document.cookie = `${MEMORY_COOKIE}=${encodeURIComponent(id)}; path=/; samesite=lax`;
+        setMe(await r.me());
+      };
     }
     return () => { live = false; };
   }, [router]);
