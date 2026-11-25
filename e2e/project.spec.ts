@@ -108,7 +108,14 @@ test('demandes : destinataire, dates et retard', async ({ page }) => {
   await expect(first.getByLabel('Statut')).toHaveValue('Ouverte');
   await expect(first.getByText(/j de retard/)).toHaveCount(0);
   await openTab(page, 'Activité');
-  await expect(page.getByText('questions.0.sentAt', { exact: true }).first()).toBeVisible();
+  const row = page.locator('.logrow').filter({ hasText: 'Question 1 · Envoyée le' }).first();
+  await expect(row).toBeVisible();
+  await expect(row.locator('.chg')).toContainText('—');
+  await expect(page.locator('.logrow').filter({ hasText: 'Question 1 · Statut' }).first().locator('.chg')).toContainText(/Envoyée|Ouverte/);
+  await expect(page.locator('.logrow').filter({ hasText: 'Question 1 · Destinataire' }).first()).toContainText('Vendeur ou banquier');
+  await expect(page.getByText('questions.0', { exact: false })).toHaveCount(0);
+  await page.getByLabel('Langue').selectOption('en');
+  await expect(page.locator('.logrow').filter({ hasText: 'Question 1 · Status' }).first().locator('.chg')).toContainText(/Sent|Open/);
 });
 
 test('demandes : une question supprimée par un collègue ne détourne pas la saisie en cours', async ({ page }) => {

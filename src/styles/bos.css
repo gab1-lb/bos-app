@@ -337,6 +337,7 @@ button.step:disabled { cursor: default; }
 .logrow code { font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--soft); border: 1px solid var(--line-2); border-radius: 4px; padding: 1px 5px; color: var(--ink-2); }
 .logrow .chg { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .logrow .old { text-decoration: line-through; color: var(--faint); }
+.logrow .fld { color: var(--ink-2); font-weight: 500; }
 .logrow time { font-size: 12.5px; color: var(--faint); white-space: nowrap; }
 .logrow.fresh { animation: bos-reveal 460ms cubic-bezier(.2, .8, .2, 1) both; }
 
