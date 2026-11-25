@@ -206,7 +206,7 @@ function variables(ctx: RenderCtx, key: TemplateKey): Record<string, string> {
   const q = comps(deal).evEbitda;
   const hurdle = mandate.hurdle;
   const mp = has(hurdle) ? maxPrice(deal, hurdle) : null;
-  const open = deal.questions.filter((x) => x.status !== 'Répondue');
+  const open = (deal.questions || []).filter((x) => x.status !== 'Répondue');
   const bullets = (qs: typeof open) => qs.map((x) => '- ' + x.q).join('\n');
   const forRecipient = (qs: typeof open) => (recipient === undefined ? qs : qs.filter((x) => x.awaitedFrom === recipient));
   // Sent questions with no explicit recipient are awaited from the director, as in waitsFor.
@@ -262,7 +262,7 @@ export function suggestTemplate(meta: DealMeta, waits: Wait[], deal?: Deal): Tem
   if (waits.some((w) => w.source === 'question' && (w.level === 'late' || w.level === 'overdue'))) return 'reminder';
   if (meta.decision === 'no_go') return 'no_go';
   if (meta.decision === 'go_dd') return 'go_dd';
-  if (meta.phase === 'analysis' && deal && deal.questions.some((q) => q.status !== 'Répondue' && !q.sentAt)) return 'info_request';
+  if (meta.phase === 'analysis' && deal && (deal.questions || []).some((q) => q.status !== 'Répondue' && !q.sentAt)) return 'info_request';
   if (meta.phase === 'bote_written') return 'bote_review';
   if (meta.phase === 'associate_review' && meta.validatedAt) return 'committee_note';
   return null;
@@ -281,7 +281,7 @@ export function defaultRecipient(key: TemplateKey, deal: Deal, waits: Wait[]): R
   }
   if (key === 'info_request') {
     const n = new Map<Recipient, number>();
-    for (const q of deal.questions) {
+    for (const q of deal.questions || []) {
       if (q.status !== 'Répondue' && !q.sentAt && q.awaitedFrom) n.set(q.awaitedFrom, (n.get(q.awaitedFrom) ?? 0) + 1);
     }
     let best: Recipient | undefined;

@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { DealRecord } from '../../data/repo';
 import type { Deal, Mandate } from '../../engine/types';
 import { homeCards, homeCounters } from '../../domain/home';
@@ -13,6 +13,13 @@ import { Reveal } from '../ui/Reveal';
 import { Counters } from './Counters';
 import { DealCard } from './DealCard';
 import { TourCard } from './TourCard';
+
+/** One card that fails to render shows a link to its deal instead of taking the board down. */
+class CardGuard extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
 
 type Data = { items: DealRecord[]; mandate: Mandate; members: Member[]; templates: Template[] };
 
@@ -92,8 +99,15 @@ export function HomeBoard() {
             <div className="board">
               {cards.map((c, i) => (
                 <Reveal key={c.meta.id} index={3 + Math.min(i, 8)}>
-                  <DealCard card={c} deal={deals.get(c.meta.id) as Deal} members={data.members} now={now}
-                    onMessage={(key) => setMsg({ id: c.meta.id, key: key ?? 'info_request' })} />
+                  <CardGuard fallback={(
+                    <article className="card hcard" data-deal-card={c.meta.id}>
+                      <div className="hc-head"><Link className="hc-name" href={`/projet/${encodeURIComponent(c.meta.id)}/synthese`}>{c.name || t('Sans nom')}</Link></div>
+                      <p className="note">{t('Affichage impossible de ce dossier sur l’accueil.')}</p>
+                    </article>
+                  )}>
+                    <DealCard card={c} deal={deals.get(c.meta.id) as Deal} members={data.members} now={now}
+                      onMessage={(key) => setMsg({ id: c.meta.id, key: key ?? 'info_request' })} />
+                  </CardGuard>
                 </Reveal>
               ))}
             </div>

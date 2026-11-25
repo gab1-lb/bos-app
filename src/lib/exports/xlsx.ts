@@ -64,7 +64,7 @@ export function xlsxSheets(d: Deal, meta: DealMeta, c: Computed, locale: Locale)
   }
   add(t('Demandes'), [
     [t('Question'), t('Thème'), t('Priorité'), t('Statut'), t('Réponse')],
-    ...d.questions.map((q): Cell[] => [q.q, t(q.cat), t(q.priority), t(q.status), q.answer]),
+    ...(d.questions || []).map((q): Cell[] => [q.q, t(q.cat), t(q.priority), t(q.status), q.answer]),
   ], [60, 12, 12, 12, 40]);
   return out;
 }

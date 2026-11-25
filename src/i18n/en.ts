@@ -631,4 +631,5 @@ export const EN: Record<string, string> = {
   "Démonstration": "Demo",
   "De l’import de l’IM à la note de comité.": "From importing the IM to the committee note.",
   "Voir la vidéo": "Watch the video",
+  "Affichage impossible de ce dossier sur l’accueil.": "This deal cannot be shown on the home page.",
 };

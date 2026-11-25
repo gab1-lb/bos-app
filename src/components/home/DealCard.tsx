@@ -47,7 +47,7 @@ export function DealCard({ card, deal, members, now, onMessage }: Props) {
   const late = waits.filter((w) => w.level === 'late').length;
   const overdue = waits.filter((w) => w.level === 'overdue').length;
   const missing = coverage.total - coverage.known;
-  const unsent = deal.questions.filter((q) => q.status !== 'Répondue' && !q.sentAt).length;
+  const unsent = (deal.questions || []).filter((q) => q.status !== 'Répondue' && !q.sentAt).length;
   const oldest = waits.filter((w) => w.source === 'question').sort((a, b) => b.days - a.days)[0];
   const key = card.suggestion as TemplateKey | null;
   const hint = key === 'reminder' && oldest ? t('{0} sans réponse depuis {1} j', recipientLabel(locale, oldest.from), oldest.days)

@@ -20,7 +20,7 @@ export function memoHtml(d: Deal, meta: DealMeta, c: Computed, locale: Locale, n
   const row = (l: string, v: string) => `<tr><td>${esc(l)}</td><td style="text-align:right">${esc(v)}</td></tr>`;
   const n = (v: number | null | undefined) => (v == null ? NaN : v);
   const dateLoc = locale === 'en' ? 'en-GB' : 'fr-FR';
-  const open = d.questions.filter((q) => q.status !== 'Répondue');
+  const open = (d.questions || []).filter((q) => q.status !== 'Répondue');
   return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><title>${esc(d.name)} · ${esc(t('Note de comité'))}</title><style>body{font:15px/1.55 Inter,-apple-system,Segoe UI,sans-serif;color:#192638;max-width:820px;margin:36px auto;padding:0 22px}h1{font-size:30px;letter-spacing:-1px;margin:4px 0}h2{font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:#667388;margin:28px 0 8px}table{border-collapse:collapse;width:100%}td{padding:6px 4px;border-bottom:1px solid #edf0f4;font-variant-numeric:tabular-nums}.v{background:#10203b;color:#fff;border-radius:10px;padding:18px 20px}.v b{font-size:20px}.m{color:#667388;font-size:13px}</style></head><body>
   <p class="m">${esc(t('Note préparatoire au comité d’investissement'))} · ${esc(now.toLocaleDateString(dateLoc))}</p><h1>${esc(d.name)}</h1><p class="m">${esc([d.sector, d.country, stageText(locale, meta)].filter(Boolean).join(' · '))}</p><p>${esc(d.description)}</p>
   <div class="v"><b>${esc(t(headlineKey(sc)))}</b> · ${esc(t('Note'))} ${sc.score == null ? '—' : Math.round(sc.score)}/100${sc.provisional ? ' (' + esc(t('provisoire')) + ')' : ''}<br>${esc(sc.reasons.map((r) => reasonText(r, f)).join(' '))}</div>

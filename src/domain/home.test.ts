@@ -26,6 +26,15 @@ describe('homeCards', () => {
     expect(cards[0].coverage).toEqual({ known: 0, total: 7 });
     expect(cards[0].suggestion).toBeNull();
   });
+  it('one malformed deal does not break the board: it is skipped, the others are shown', () => {
+    const bad = { ...blankDeal('bad'), questions: null, hist: null, comps: 'x' } as unknown as Deal;
+    const items = [
+      { deal: bad, meta: mkMeta({ id: 'bad' }) },
+      { deal: blankDeal('ok'), meta: mkMeta({ id: 'ok' }) },
+    ];
+    const cards = homeCards(items, DEFAULT_MANDATE, now, none);
+    expect(cards.map((c) => c.meta.id)).toEqual(['ok']);
+  });
   it('sorts 1 overdue before 2 late, passes suggest through', () => {
     const items = [
       { deal: withQs('late', [8, 9]), meta: mkMeta({ id: 'late' }) },

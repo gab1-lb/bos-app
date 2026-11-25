@@ -23,21 +23,30 @@ export function homeCards(
   now: Date,
   suggest: (meta: DealMeta, waits: Wait[]) => string | null,
 ): HomeCard[] {
+  const card = (deal: Deal, meta: DealMeta): HomeCard => {
+    const ret = returns(deal);
+    const s = screen(deal, mandate, comps(deal), ret);
+    const waits = waitsFor(deal, meta, now);
+    return {
+      meta,
+      name: deal.name,
+      screen: s,
+      irr: ret?.irr ?? null,
+      waits,
+      coverage: { known: s.crit.filter((c) => c.pts != null).length, total: s.crit.length },
+      suggestion: suggest(meta, waits),
+    };
+  };
   return items
     .filter(({ meta }) => meta.phase !== 'decided' && !meta.archived)
-    .map(({ deal, meta }): HomeCard => {
-      const ret = returns(deal);
-      const s = screen(deal, mandate, comps(deal), ret);
-      const waits = waitsFor(deal, meta, now);
-      return {
-        meta,
-        name: deal.name,
-        screen: s,
-        irr: ret?.irr ?? null,
-        waits,
-        coverage: { known: s.crit.filter((c) => c.pts != null).length, total: s.crit.length },
-        suggestion: suggest(meta, waits),
-      };
+    .flatMap(({ deal, meta }): HomeCard[] => {
+      // One malformed deal must not take the whole board down for everyone: it is left out
+      // (it stays reachable from Mes dossiers).
+      try {
+        return [card(deal, meta)];
+      } catch {
+        return [];
+      }
     })
     .sort(
       (a, b) =>
