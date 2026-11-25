@@ -13,6 +13,14 @@ import { CCLS, TAG } from '../project/verdict';
 import { Avatar } from '../ui/Avatar';
 import { Chip } from '../ui/Chip';
 import { Icon } from '../ui/Icon';
+import type { Highlight } from '../../domain/highlights';
+
+const MAX_HL = 4;
+const GROUPS = [
+  ['positives', 'Points positifs', 'good'],
+  ['negatives', 'Points négatifs', 'bad'],
+  ['toExplore', 'À approfondir', 'amber'],
+] as const;
 
 /** Bouton de la prochaine action, par modèle suggéré. */
 const ACTION: Record<TemplateKey, string> = {
@@ -34,7 +42,7 @@ type Props = {
 
 export function DealCard({ card, deal, members, now, onMessage }: Props) {
   const f = useI18n();
-  const { t, locale, pc } = f;
+  const { t, locale, pc, mx, nf } = f;
   const [open, setOpen] = useState(true);
   const uid = useId();
   const { meta, screen: sc, waits, coverage, irr } = card;
@@ -55,6 +63,7 @@ export function DealCard({ card, deal, members, now, onMessage }: Props) {
     : key === 'bote_review' ? t('BOTe rédigé, à transmettre à l’associate')
     : key === 'committee_note' ? t('BOTe validé, note à préparer pour le comité')
     : t('Aucune action suggérée pour l’instant');
+  const hlValue = (h: Highlight) => h.raw == null ? null : h.unit === '%' ? pc(h.raw) : h.unit === '×' ? mx(h.raw) : nf(h.raw, h.unit === 'M€' ? 1 : 0);
   const irrOk = irr != null && Number.isFinite(irr) ? irr * 100 >= sc.hurdle : null;
 
   return (
@@ -135,6 +144,30 @@ export function DealCard({ card, deal, members, now, onMessage }: Props) {
             </span>
             {sc.score != null && <span className="dim">· {t('Note')} {Math.round(sc.score)} / 100{sc.provisional ? ' · ' + t('provisoire') : ''}</span>}
           </span>
+        </li>
+        <li className="hc-hl">
+          {GROUPS.map(([k, title, tone]) => {
+            const items: Highlight[] = card.highlights[k];
+            return (
+              <section key={k} className={`hl ${tone}`} data-hl={k} aria-label={t(title)}>
+                <h3>{t(title)}</h3>
+                {items.length === 0 ? <p className="dim">{t('Rien à signaler')}</p> : (
+                  <ul>
+                    {items.slice(0, MAX_HL).map((h) => {
+                      const v = hlValue(h);
+                      return (
+                        <li key={h.key}>
+                          <span>{t(h.labelKey)}</span>{' '}
+                          {v != null ? <b className="num">{v}</b> : h.key.startsWith('crit:') ? <small className="dim">{t('donnée manquante')}</small> : null}
+                        </li>
+                      );
+                    })}
+                    {items.length > MAX_HL && <li className="more dim">+{items.length - MAX_HL}</li>}
+                  </ul>
+                )}
+              </section>
+            );
+          })}
         </li>
       </ul>
     </article>
