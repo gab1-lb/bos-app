@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { blankDeal } from '../engine/samples';
-import { applyExtract, dealNameFromFile, extract, patchesFor, type ImKey } from './im';
+import { applyExtract, dealNameFromFile, extract, pageText, patchesFor, type ImKey } from './im';
 
 const PAGES = [
   'Projet Atlas\nSecteur : Logiciel métier\nPays : France\nExercice clos en 2025\n',
@@ -69,5 +69,17 @@ describe('patchesFor', () => {
     const out = applyExtract(d, r, new Set<ImKey>(['rev', 'netDebt']));
     const paths = Object.fromEntries(patchesFor(d, out).map(([p, v]) => [p.join('.'), v]));
     expect(paths).toEqual({ 'hist.rev.4': 10, 'refs.rev': 'IM p. 1', 'bs.netDebt': 2, 'refs.netDebt': 'IM p. 1', ...(d.hist.years[4] === 2025 ? {} : Object.fromEntries(d.hist.years.map((_, i) => [`hist.years.${i}`, 2021 + i]))) });
+  });
+});
+
+describe('pageText (PDF)', () => {
+  it('joins split glyph items without inserting spaces inside words', () => {
+    const items = [{ str: 'C' }, { str: 'hiff' }, { str: 're' }, { str: ' ' }, { str: 'd’affaires' }, { str: ' ' }, { str: ':' }, { str: ' ' }, { str: '15,2' }, { str: ' ' }, { str: 'M€', hasEOL: true }, { str: 'Pays' }];
+    expect(pageText(items)).toBe('Chiffre d’affaires : 15,2 M€\nPays');
+    expect(extract([pageText(items)]).vals.rev?.n).toBe(15.2);
+  });
+  it('reads header fields when the PDF dropped the colon', () => {
+    const r = extract(['Secteur  Logiciel vertical\nPays  France\n']);
+    expect([r.sector, r.country]).toEqual(['Logiciel vertical', 'France']);
   });
 });

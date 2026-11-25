@@ -43,8 +43,8 @@ export function extract(pages: string[]): ImResult {
   }
   const text = pages.slice(0, 4).join('\n');
   const yr = text.match(/(?:exercice(?:\s+clos)?(?:\s+en)?|fiscal year|FY)\s*[:=]?\s*(20\d{2})/i);
-  const sector = text.match(/^(?:secteur(?: d’activité)?|industry|sector)\s*:\s*(.{2,80})$/im);
-  const country = text.match(/^(?:pays(?: du siège)?|country)\s*:\s*(.{2,60})$/im);
+  const sector = text.match(/^(?:secteur(?: d’activité)?|industry|sector)(?:\s*:\s*|\s{2,})(.{2,80})$/im);
+  const country = text.match(/^(?:pays(?: du siège)?|country)(?:\s*:\s*|\s{2,})(.{2,60})$/im);
   return { vals, year: yr ? +yr[1] : null, sector: sector ? sector[1].trim() : '', country: country ? country[1].trim() : '' };
 }
 
@@ -96,6 +96,15 @@ function loadPdfJs(): Promise<PdfJs> {
 }
 
 /** Texte des 80 premières pages d'un PDF, lu dans le navigateur avec pdf.js. */
+/**
+ * Rebuilds a page's text from pdf.js items. pdf.js emits explicit space items
+ * between words, and many PDF generators split a word into several items, so
+ * items are concatenated as-is, with a newline wherever pdf.js signals hasEOL.
+ */
+export function pageText(items: ReadonlyArray<{ str?: string; hasEOL?: boolean }>): string {
+  return items.map((it) => (it.str ?? '') + (it.hasEOL ? '\n' : '')).join('');
+}
+
 export async function pdfPages(file: File): Promise<string[]> {
   const lib = await loadPdfJs();
   // isEvalSupported: false — no code generated from the PDF (CVE-2024-4367).
@@ -103,7 +112,7 @@ export async function pdfPages(file: File): Promise<string[]> {
   const pages: string[] = [];
   for (let p = 1; p <= Math.min(doc.numPages, 80); p++) {
     const tc = await (await doc.getPage(p)).getTextContent();
-    pages.push(tc.items.map((it) => (it.str ?? '') + (it.hasEOL ? '\n' : ' ')).join(''));
+    pages.push(pageText(tc.items));
   }
   return pages;
 }
