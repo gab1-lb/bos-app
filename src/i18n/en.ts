@@ -645,4 +645,5 @@ export const EN: Record<string, string> = {
   "La connexion avec Google a échoué ({0}). Réessayez.": "Google sign-in failed ({0}). Please try again.",
   "Dossier archivé": "Archived deal",
   "Il n’apparaît plus sur l’accueil ni dans les dossiers en cours. Il reste modifiable.": "It no longer shows on the home page or among current deals. It can still be edited.",
+  "BOTe non validé": "BOTe not validated",
 };

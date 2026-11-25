@@ -141,6 +141,9 @@ export function MessageDialog({ rec, waits, mandate, templates, initialKey, onCl
           {INTERNAL.includes(state.key) && (
             <div className="internal" data-internal><Chip tone="bad">{t('Usage interne — contient des chiffres confidentiels')}</Chip></div>
           )}
+          {state.key === 'committee_note' && !rec.meta.validatedAt && (
+            <div className="internal" data-unvalidated><Chip tone="amber">{t('BOTe non validé')}</Chip></div>
+          )}
           {PER_RECIPIENT.includes(state.key) && (
             <div className="field">
               <label htmlFor={`${uid}-to`}>{t('Destinataire')}</label>

@@ -130,7 +130,7 @@ Les admins peuvent modifier les modèles. Une suggestion apparaît selon la phas
 - Pas de voix off (pas de synthèse vocale disponible) ; la vidéo est régénérée par un script (`npm run record:tour`) quand l'interface évolue.
 
 ### 5.9 Reprise de l'existant
-- Le dossier exemple « Projet Hélios » est créé à l'initialisation, marqué comme exemple.
+- Le dossier exemple « Projet Hélios » est créé à l'initialisation, marqué comme exemple. *(Écart retenu à l'implémentation : en mode Supabase, il est créé par le script facultatif `supabase/seed-demo.sql`, lancé après la première connexion de l'administrateur ; en mode mémoire, il est présent d'office.)*
 - Import des dossiers de la version actuelle : j'ajoute moi-même à la page actuelle un bouton « Exporter mes dossiers (JSON) » ; la nouvelle application a un bouton « Importer » (admin et associate).
   - *Choix de conception :* le mandat personnel de l'ancienne version n'est pas importé (le mandat est unique pour l'équipe et géré par l'admin). Le champ texte « Équipe » est conservé comme note ; le responsable est la personne qui importe.
   - Conversion des étapes : Présélection, IM reçu → « IM reçu » ; Offre indicative → décision « Offre indicative » ; Due diligence, Offre ferme, Signé → décision « Go DD » ; Abandonné → « No-go ».

@@ -69,11 +69,16 @@ export function ProjectProvider({ id, children }: { id: string; children: ReactN
   }, [toast, t, reload]);
 
   const editable = !!me && !!rec && can(me, 'edit', rec.meta);
+  // Writes from this page are sent one after another, so two quick edits of a field land in the order typed.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const send = useCallback((write: () => Promise<void>) => {
+    queue.current = queue.current.then(write).catch(fail);
+  }, [fail]);
   const patch = useCallback((path: string[], value: unknown) => {
     if (!editable) return;
     setRec((r) => (r ? { ...r, deal: setIn(r.deal, path, value) } : r));
-    repo.patchDeal(id, path, value).catch(fail);
-  }, [repo, id, fail, editable]);
+    send(() => repo.patchDeal(id, path, value));
+  }, [repo, id, send, editable]);
 
   type Items = Record<string, unknown>[];
   const editList = useCallback((list: ListName, f: (items: Items) => Items) => {
@@ -82,20 +87,18 @@ export function ProjectProvider({ id, children }: { id: string; children: ReactN
   const appendItems = useCallback(<L extends ListName>(list: L, items: ListItem<L>[]) => {
     if (!editable || items.length === 0) return;
     editList(list, (xs) => [...xs, ...(items as unknown as Items)]);
-    void (async () => {
-      try { for (const it of items) await repo.appendItem(id, list, it); } catch (e) { fail(e); }
-    })();
-  }, [repo, id, fail, editable, editList]);
+    send(async () => { for (const it of items) await repo.appendItem(id, list, it); });
+  }, [repo, id, send, editable, editList]);
   const removeItem = useCallback((list: ListName, itemId: string) => {
     if (!editable) return;
     editList(list, (xs) => xs.filter((x) => x.id !== itemId));
-    repo.removeItem(id, list, itemId).catch(fail);
-  }, [repo, id, fail, editable, editList]);
+    send(() => repo.removeItem(id, list, itemId));
+  }, [repo, id, send, editable, editList]);
   const updateItem = useCallback((list: ListName, itemId: string, fields: Record<string, unknown>) => {
     if (!editable) return;
     editList(list, (xs) => xs.map((x) => (x.id === itemId ? { ...x, ...fields } : x)));
-    repo.updateItem(id, list, itemId, fields).catch(fail);
-  }, [repo, id, fail, editable, editList]);
+    send(() => repo.updateItem(id, list, itemId, fields));
+  }, [repo, id, send, editable, editList]);
 
   // Older data: item ids generated on read are saved once, so later writes by id find their rows.
   const savedIds = useRef<string | null>(null);

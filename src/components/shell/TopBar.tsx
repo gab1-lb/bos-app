@@ -21,11 +21,12 @@ export function TopBar() {
     let live = true;
     const fromPath = path.match(/^\/projet\/([^/]+)/)?.[1];
     const last = fromPath ? decodeURIComponent(fromPath) : getLastDeal();
-    repo.listDeals().then((list) => {
-      if (!live) return;
-      const id = list.some((r) => r.deal.id === last) ? last : list[0]?.deal.id;
-      setProjectHref(id ? `/projet/${encodeURIComponent(id)}/synthese` : null);
-    }).catch(() => {});
+    // Only the last deal is checked; the whole list is read only when there is no (valid) last deal.
+    (async () => {
+      const found = last ? await repo.getDeal(last).catch(() => null) : null;
+      const id = found ? found.meta.id : (await repo.listDeals())[0]?.meta.id;
+      if (live) setProjectHref(id ? `/projet/${encodeURIComponent(id)}/synthese` : null);
+    })().catch(() => {});
     return () => { live = false; };
   }, [repo, path]);
 

@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'sw
 
 export const metadata: Metadata = {
   title: 'BOS',
-  description: 'Business Opportunity Screening',
+  description: 'BOTe (Business Overview) des cibles M&A',
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

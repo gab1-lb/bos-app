@@ -71,6 +71,14 @@ test('parcours complet : de l’approbation d’un analyste à la décision du c
   await step(page, 'Revue associate').click();
   await expect(step(page, 'Revue associate')).toHaveAttribute('aria-current', 'step');
 
+  // Before validation, a committee note can be drafted but is flagged as not validated.
+  await page.getByRole('button', { name: 'Rédiger un message' }).click();
+  const early = page.getByRole('dialog');
+  await early.getByLabel('Modèle').selectOption('committee_note');
+  await expect(early.locator('[data-unvalidated]')).toHaveText('BOTe non validé');
+  await early.getByRole('button', { name: 'Fermer' }).first().click();
+  await expect(early).toBeHidden();
+
   // 5. Another senior validates the BOTe.
   await as(page, 'u-admin', 'Alice Admin');
   await page.getByRole('button', { name: 'Valider le BOTe' }).click();
@@ -84,6 +92,7 @@ test('parcours complet : de l’approbation d’un analyste à la décision du c
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByLabel('Modèle')).toHaveValue('committee_note');
   await expect(dialog.locator('[data-internal]')).toBeVisible();
+  await expect(dialog.locator('[data-unvalidated]')).toHaveCount(0);
   await expect(dialog.getByLabel('Message')).toContainText(DEAL);
   await dialog.getByRole('button', { name: 'Fermer' }).click();
   await expect(dialog).toBeHidden();
