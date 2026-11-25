@@ -10,7 +10,7 @@ const deal = (ownerId: string): DealMeta => ({
 });
 const ALL: Action[] = ['read', 'edit', 'create', 'setPhase:im_received', 'setPhase:analysis', 'setPhase:bote_written',
   'setPhase:associate_review', 'setPhase:committee', 'setPhase:decided', 'validateBote', 'decide', 'delete', 'archive',
-  'manageMembers', 'manageMandate', 'manageTemplates', 'import'];
+  'manageMembers', 'manageMandate', 'manageTemplates', 'import', 'setOwner'];
 const allowed = (mem: Member, d?: DealMeta) => ALL.filter((a) => can(mem, a, d));
 
 describe('can', () => {
@@ -66,5 +66,12 @@ describe('can', () => {
     expect(can(a, 'validateBote', deal('me'))).toBe(false);
     expect(can(a, 'decide', deal('me'))).toBe(true);
     expect(can(a, 'delete', deal('me'))).toBe(true);
+  });
+  it('setOwner: associate/admin, not during associate review (as set_owner)', () => {
+    expect(can(m('analyst'), 'setOwner', deal('me'))).toBe(false);
+    expect(can(m('associate'), 'setOwner', deal('other'))).toBe(true);
+    expect(can(m('admin'), 'setOwner', deal('me'))).toBe(true);
+    expect(can(m('admin'), 'setOwner', { ...deal('other'), phase: 'associate_review' })).toBe(false);
+    expect(can(m('associate'), 'setOwner')).toBe(false);
   });
 });

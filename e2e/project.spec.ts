@@ -150,3 +150,24 @@ test('retraitements et comparables : ajout puis suppression par ligne', async ({
   await expect(comps.getByLabel('Cible')).toHaveCount(5);
   await expect(comps.getByLabel('Cible').nth(1)).toHaveValue('Cible C (illustratif)');
 });
+
+test('fiche du dossier : un associate change le responsable, un analyste ajoute un contributeur', async ({ page }) => {
+  await page.goto(`/projet/${DEMO}/demandes`);
+  // analyst: owner locked, contributors editable
+  const owner = page.getByLabel('Responsable', { exact: true });
+  await expect(owner).toBeDisabled();
+  await expect(owner).toHaveValue('u-admin');
+  await page.getByLabel('Aron Associate').check();
+  await expect(page.getByLabel('Aron Associate')).toBeChecked();
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Accueil' }).click();
+  const card = page.locator('[data-deal-card="demo-helios"]');
+  await expect(card).toContainText('1 contributeur');
+
+  await page.goto('/login?as=associate');
+  await page.goto(`/projet/${DEMO}/demandes`);
+  await expect(owner).toBeEnabled();
+  await owner.selectOption({ label: 'Anna Analyst' });
+  await expect(page.locator('.pagehead')).toContainText('Responsable : Anna Analyst');
+  await openTab(page, 'Activité');
+  await expect(page.locator('.logrow').first()).toContainText('Responsable');
+});

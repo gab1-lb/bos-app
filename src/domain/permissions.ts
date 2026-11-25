@@ -16,7 +16,7 @@ export type Member = {
 export type Action =
   | 'read' | 'edit' | 'create'
   | `setPhase:${Phase}`
-  | 'validateBote' | 'decide' | 'delete' | 'archive'
+  | 'validateBote' | 'decide' | 'delete' | 'archive' | 'setOwner'
   | 'manageMembers' | 'manageMandate' | 'manageTemplates' | 'import';
 
 const ANALYST_PHASES: string[] = ['im_received', 'analysis', 'bote_written'];
@@ -35,6 +35,8 @@ export function can(member: Member, action: Action, deal?: DealMeta): boolean {
   }
   if (action === 'archive') return senior || deal?.ownerId === member.id;
   if (action === 'validateBote') return senior && deal?.ownerId !== member.id;
+  // as set_owner: never mid-review (a senior owner could hand the deal away and validate their own BOTe)
+  if (action === 'setOwner') return senior && !!deal && deal.phase !== 'associate_review';
   if (action === 'decide' || action === 'delete' || action === 'import') {
     return senior;
   }

@@ -7,7 +7,7 @@ import { waitsFor } from '../../domain/waits';
 import { useI18n } from '../../lib/repo-context';
 import { Card } from '../ui/Card';
 import { Chip } from '../ui/Chip';
-import { DateInput, Field, Select, TextInput } from '../ui/Field';
+import { Check, DateInput, Field, Select, TextInput } from '../ui/Field';
 import { Icon } from '../ui/Icon';
 import { Reveal } from '../ui/Reveal';
 import { newItemId } from '../../domain/dealShape';
@@ -36,6 +36,12 @@ export function Demandes() {
   const canDecide = !!me && can(me, 'decide', meta);
   const canValidate = !!me && meta.phase === 'associate_review' && !meta.validatedAt && can(me, 'validateBote', meta);
   const committee = bind(['committeeDate'], t('Date de comité'));
+  const senior = me?.role === 'admin' || me?.role === 'associate';
+  const canOwner = !!me && can(me, 'setOwner', meta);
+  const owner = members.find((m) => m.id === meta.ownerId);
+  const active = members.filter((m) => m.status === 'active' && m.role);
+  const ownerOptions = active.filter((m) => m.role !== 'reader');
+  const contributorOptions = active.filter((m) => m.id !== meta.ownerId);
 
   const lateness = (q: Question) => {
     if (q.answeredAt) return <Chip tone="good">{t('Répondue le {0}', day(q.answeredAt))}</Chip>;
@@ -156,6 +162,28 @@ export function Demandes() {
       <Reveal className="g2e mt" index={2}>
         <Card title={t('Fiche du dossier')} icon="building">
           <div className="stack" style={{ gap: 12 }}>
+            <div className="field">
+              <label htmlFor="f-owner">{t('Responsable')}</label>
+              <select id="f-owner" className="in" value={meta.ownerId} disabled={!canOwner}
+                onChange={(e) => act((r, id) => r.setOwner(id, e.target.value))}>
+                {!ownerOptions.some((m) => m.id === meta.ownerId) && <option value={meta.ownerId}>{owner?.name || t('Membre inconnu')}</option>}
+                {ownerOptions.map((m) => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
+              </select>
+              {senior && meta.phase === 'associate_review' && <span className="mini">{t('Le responsable ne change pas pendant la revue associate.')}</span>}
+            </div>
+            <fieldset className="field contribs">
+              <legend>{t('Contributeurs')}</legend>
+              <div className="contriblist">
+                {contributorOptions.map((m) => (
+                  <Check key={m.id} id={`f-contrib-${m.id}`} label={m.name || m.email} readOnly={!editable}
+                    checked={meta.contributorIds.includes(m.id)}
+                    onCommit={(on) => act((r, id) => r.setContributors(id, on ? [...meta.contributorIds, m.id] : meta.contributorIds.filter((x) => x !== m.id)))}>
+                    {m.name || m.email}
+                  </Check>
+                ))}
+                {contributorOptions.length === 0 && <span className="dim">—</span>}
+              </div>
+            </fieldset>
             {(['name', 'sector', 'country', 'team', 'source'] as const).map((k) => {
               const l = { name: 'Nom de code', sector: 'Secteur', country: 'Pays', team: 'Équipe', source: 'Document source' }[k];
               const bd = bind([k], t(l));

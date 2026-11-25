@@ -632,4 +632,5 @@ export const EN: Record<string, string> = {
   "De l’import de l’IM à la note de comité.": "From importing the IM to the committee note.",
   "Voir la vidéo": "Watch the video",
   "Affichage impossible de ce dossier sur l’accueil.": "This deal cannot be shown on the home page.",
+  "Le responsable ne change pas pendant la revue associate.": "The owner cannot change during the associate review.",
 };
