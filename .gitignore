@@ -49,3 +49,6 @@ next-env.d.ts
 /.next-prod/
 /.next-tour/
 /.next-tour-dev/
+
+# Parallel agent worktrees
+/.claude/worktrees/
