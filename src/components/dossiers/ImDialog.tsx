@@ -8,6 +8,9 @@ import { IM_FIELDS, applyExtract, dealNameFromFile, extract, patchesFor, pdfPage
 import { useApp, useI18n } from '../../lib/repo-context';
 import { Icon } from '../ui/Icon';
 
+const MAX_PDF = 30 * 1024 * 1024;
+const MAX_TEXT = 5 * 1024 * 1024;
+
 type Props = {
   /** Dossier ouvert : propose « Appliquer au dossier ouvert ». */
   target?: { id: string; deal: Deal; editable: boolean };
@@ -24,7 +27,7 @@ export function ImDialog({ target, onClose }: Props) {
   const [text, setText] = useState('');
   const [fileName, setFileName] = useState('');
   const [over, setOver] = useState(false);
-  const [state, setState] = useState<'idle' | 'reading' | 'failed'>('idle');
+  const [state, setState] = useState<'idle' | 'reading' | 'failed' | 'pdfTooBig' | 'textTooBig'>('idle');
   const [res, setRes] = useState<ImResult | null>(null);
   const [selected, setSelected] = useState<Set<ImKey>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -40,11 +43,13 @@ export function ImDialog({ target, onClose }: Props) {
 
   const handle = async (file: File | undefined) => {
     if (!file) return;
-    setState('reading');
     setRes(null);
+    const pdf = file.name.toLowerCase().endsWith('.pdf');
+    if (file.size > (pdf ? MAX_PDF : MAX_TEXT)) { setState(pdf ? 'pdfTooBig' : 'textTooBig'); return; }
+    setState('reading');
     try {
       setFileName(file.name);
-      show(file.name.toLowerCase().endsWith('.pdf') ? await pdfPages(file) : [await file.text()]);
+      show(pdf ? await pdfPages(file) : [await file.text()]);
     } catch {
       setState('failed');
     }
@@ -100,6 +105,8 @@ export function ImDialog({ target, onClose }: Props) {
         </div>
         <div aria-live="polite">
           {state === 'reading' && <p className="note">{t('Lecture du document…')}</p>}
+          {state === 'pdfTooBig' && <p className="note down" role="alert">{t('PDF trop volumineux : 30 Mo au maximum. Collez plutôt les extraits utiles ci-dessus.')}</p>}
+          {state === 'textTooBig' && <p className="note down" role="alert">{t('Fichier texte trop volumineux : 5 Mo au maximum.')}</p>}
           {state === 'failed' && <p className="note down">{t('Lecture impossible. Copiez le texte de l’IM et collez-le ci-dessus.')}</p>}
           {res && found.length === 0 && (
             <p className="note">{t('Aucun indicateur reconnu. Le texte doit contenir des libellés comme « Chiffre d’affaires : 12,4 M€ ».')}</p>

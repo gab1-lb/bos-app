@@ -55,9 +55,9 @@ export function Members() {
               {list.map((m) => {
                 const self = m.id === me?.id;
                 const [label, tone] = STATUS_LABEL[m.status];
-                const role = m.status === 'active' ? m.role ?? 'reader' : choice[m.id] ?? m.role ?? 'analyst';
+                const role: Role | '' = m.status === 'active' ? m.role ?? '' : choice[m.id] ?? m.role ?? 'analyst';
                 const off = busy === m.id;
-                const roleName = t(ROLE_LABEL[role]);
+                const roleName = role ? t(ROLE_LABEL[role]) : '';
                 return (
                   <tr key={m.id} data-member={m.id} className={m.status}>
                     <td>
@@ -75,6 +75,7 @@ export function Members() {
                           if (m.status === 'active') void update(m, { role: r }, t('Rôle de {0} : {1}', m.name, t(ROLE_LABEL[r])));
                           else setChoice((c) => ({ ...c, [m.id]: r }));
                         }}>
+                        {role === '' && <option value="" disabled>{t('Rôle à définir')}</option>}
                         {ROLES.map((r) => <option key={r} value={r}>{t(ROLE_LABEL[r])}</option>)}
                       </select>
                     </td>
@@ -83,7 +84,7 @@ export function Members() {
                         <span className="rowacts">
                           {m.status !== 'active' && (
                             <button type="button" className="btn sm primary" disabled={off}
-                              onClick={() => update(m, { role, status: 'active' }, t('{0} approuvé comme {1}', m.name, roleName))}>
+                              onClick={() => role && update(m, { role, status: 'active' }, t('{0} approuvé comme {1}', m.name, roleName))}>
                               <Icon name="shield" />{t(m.status === 'pending' ? 'Approuver' : 'Rétablir l’accès')}
                             </button>
                           )}

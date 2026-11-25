@@ -11,6 +11,7 @@ import { Icon } from '../ui/Icon';
 type Report = { done: { name: string; stage: string }[]; errors: string[] };
 
 const MAX_BYTES = 20 * 1024 * 1024;
+const MAX_DEALS = 500;
 
 /** Messages of importLegacy are French keys; "Dossier N : …" is split so the reason is translated too. */
 function errorText(locale: Locale, e: string): string {
@@ -37,7 +38,13 @@ export function ImportDialog({ onClose }: { onClose(): void }) {
     const out: Report = { done: [], errors: [] };
     try {
       if (file.size > MAX_BYTES) throw new Error(t('Fichier trop volumineux'));
-      const { items, errors } = importLegacy(await file.text(), me, new Date());
+      const text = await file.text();
+      let data: unknown = text;
+      try { data = JSON.parse(text); } catch { /* importLegacy reports invalid JSON */ }
+      const count = typeof data === 'object' && data !== null && Array.isArray((data as { deals?: unknown }).deals)
+        ? (data as { deals: unknown[] }).deals.length : 0;
+      if (count > MAX_DEALS) throw new Error(t('Fichier trop volumineux : {0} dossiers, {1} au maximum par import. Découpez le fichier.', count, MAX_DEALS));
+      const { items, errors } = importLegacy(data, me, new Date());
       out.errors.push(...errors.map((e) => errorText(locale, e)));
       for (const it of items) {
         const name = it.deal.name || t('Sans nom');

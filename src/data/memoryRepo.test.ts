@@ -186,6 +186,18 @@ describe('members, invites, mandate, templates, locale', () => {
     expect(await code(r.setMandate(DEFAULT_MANDATE))).toBe('forbidden');
     expect(await code(r.saveTemplate(DEFAULT_TEMPLATES[0]))).toBe('forbidden');
   });
+  it('keeps at least one active admin', async () => {
+    const r = fresh();
+    expect(await code(r.setMember(admin.id, { role: 'associate' }))).toBe('forbidden');
+    expect(await code(r.setMember(admin.id, { status: 'denied' }))).toBe('forbidden');
+    expect((await r.me())).toMatchObject({ role: 'admin', status: 'active' });
+    await r.setMember(associate.id, { role: 'admin' });
+    await r.setMember(admin.id, { role: 'associate' });
+    expect((await r.members()).find((m) => m.id === admin.id)?.role).toBe('associate');
+    r.asMember(associate.id);
+    expect(await code(r.setMember(associate.id, { status: 'denied' }))).toBe('forbidden');
+    await r.setMember(analyst.id, { role: 'reader' });
+  });
   it('setMyLocale updates own member only', async () => {
     const r = fresh();
     r.asMember(reader.id);

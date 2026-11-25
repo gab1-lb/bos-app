@@ -334,5 +334,34 @@ select test.throws(format('select public.patch_deal(%L, %L, %L)', '00000000-0000
                    'patch_deal: unknown deal -> not found');
 reset role;
 
+-- ---------------------------------------------------------------- last active admin is kept
+-- a1 is the only active admin at this point; acting as a1 through RLS.
+set role authenticated;
+select test.as_user('00000000-0000-0000-0000-0000000000a1');
+select test.ok((select count(*) = 1 from public.members where role = 'admin' and status = 'active'), 'one active admin before the checks');
+select test.throws($$update public.members set role = 'associate' where id = '00000000-0000-0000-0000-0000000000a1'$$, '42501',
+                   'last admin: cannot demote oneself');
+select test.throws($$update public.members set status = 'denied' where id = '00000000-0000-0000-0000-0000000000a1'$$, '42501',
+                   'last admin: cannot deny oneself');
+select test.throws($$update public.members set status = 'pending', role = null where id = '00000000-0000-0000-0000-0000000000a1'$$, '42501',
+                   'last admin: cannot reset oneself to pending');
+-- a second admin makes the demotion possible
+update public.members set role = 'admin' where id = '00000000-0000-0000-0000-0000000000c1';
+update public.members set role = 'associate' where id = '00000000-0000-0000-0000-0000000000a1';
+select test.ok((select role = 'associate' from public.members where id = '00000000-0000-0000-0000-0000000000a1'),
+               'admin demotion allowed while another active admin remains');
+select test.as_user('00000000-0000-0000-0000-0000000000c1');
+select test.throws($$update public.members set role = 'analyst' where id = '00000000-0000-0000-0000-0000000000c1'$$, '42501',
+                   'new last admin: cannot demote oneself');
+-- a non-admin change on the last admin row (locale) is unaffected
+select public.set_my_locale('en');
+select test.ok((select locale = 'en' from public.members where id = '00000000-0000-0000-0000-0000000000c1'), 'last admin: locale change still allowed');
+reset role;
+select test.throws($$update public.members set status = 'denied' where id = '00000000-0000-0000-0000-0000000000c1'$$, '42501',
+                   'last admin: refused even for the table owner');
+-- restore (as the owner)
+update public.members set role = 'admin' where id = '00000000-0000-0000-0000-0000000000a1';
+select test.ok((select count(*) = 2 from public.members where role = 'admin' and status = 'active'), 'two active admins after restore');
+
 \o
 \echo 'rls.test.sql: all assertions passed'

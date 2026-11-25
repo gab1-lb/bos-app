@@ -248,6 +248,13 @@ export function createMemoryRepo(opts: MemoryRepoOptions = {}): MemoryRepo {
       ok('manageMembers');
       const m = memberList.find((x) => x.id === id);
       if (!m) throw new RepoError('not_found', `member ${id} not found`);
+      // like the database trigger: at least one active admin must remain
+      const role = patch.role !== undefined ? patch.role : m.role;
+      const status = patch.status !== undefined ? patch.status : m.status;
+      if (m.role === 'admin' && m.status === 'active' && (role !== 'admin' || status !== 'active')
+        && !memberList.some((x) => x.id !== m.id && x.role === 'admin' && x.status === 'active')) {
+        throw new RepoError('forbidden', 'at least one active admin must remain');
+      }
       if (patch.role !== undefined) m.role = patch.role;
       if (patch.status !== undefined) m.status = patch.status;
     },

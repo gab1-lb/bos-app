@@ -249,3 +249,47 @@ test('administration réservée aux admins', async ({ page }) => {
   await expect(page.getByText('Réservé aux administrateurs.')).toBeVisible();
   await expect(page.locator('[data-member]')).toHaveCount(0);
 });
+
+test('limites d’import : 500 dossiers par fichier, IM texte de 5 Mo au plus', async ({ page }) => {
+  await loginAs(page, 'admin');
+  await openDossiers(page);
+  await page.getByRole('button', { name: 'Importer des dossiers' }).click();
+  let dialog = page.getByRole('dialog');
+  const many = { format: 'bos-legacy-v1', deals: Array.from({ length: 501 }, (_, i) => ({ name: `D${i}`, stage: 'IM reçu' })) };
+  await dialog.getByLabel('Fichier JSON').setInputFiles({ name: 'many.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(many)) });
+  await expect(dialog.locator('[data-import-report]')).toContainText('501 dossiers, 500 au maximum par import');
+  await expect(dialog.locator('[data-import-report]')).toContainText('Aucun dossier importé');
+  await dialog.getByRole('button', { name: 'Fermer' }).first().click();
+  await expect(page.locator('[data-deal-row]')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Importer un IM' }).click();
+  dialog = page.getByRole('dialog');
+  await dialog.locator('input[type=file]').setInputFiles({ name: 'im.txt', mimeType: 'text/plain', buffer: Buffer.alloc(5 * 1024 * 1024 + 1, 'a') });
+  await expect(dialog.getByRole('alert')).toHaveText('Fichier texte trop volumineux : 5 Mo au maximum.');
+});
+
+test('membre actif sans rôle : « Rôle à définir »', async ({ page }) => {
+  await loginAs(page, 'admin');
+  await page.evaluate(async () => {
+    await (window as unknown as { __bosRepo: { setMember(id: string, p: unknown): Promise<void> } }).__bosRepo.setMember('u-reader', { role: null });
+  });
+  await page.getByRole('link', { name: 'Administration' }).click();
+  const select = page.locator('[data-member="u-reader"]').getByLabel('Rôle');
+  await expect(select.locator('option:checked')).toHaveText('Rôle à définir');
+  await select.selectOption('reader');
+  await expect(select.locator('option:checked')).toHaveText('Lecteur');
+  await expect(select.locator('option', { hasText: 'Rôle à définir' })).toHaveCount(0);
+});
+
+test('le dernier admin ne peut pas se retirer ses droits', async ({ page }) => {
+  await loginAs(page, 'admin');
+  await page.getByRole('link', { name: 'Administration' }).click();
+  await expect(page.locator('[data-member="u-admin"]')).toBeVisible();
+  const err = await page.evaluate(async () => {
+    try {
+      await (window as unknown as { __bosRepo: { setMember(id: string, p: unknown): Promise<void> } }).__bosRepo.setMember('u-admin', { role: 'associate' });
+      return 'ok';
+    } catch (e) { return (e as { code?: string }).code; }
+  });
+  expect(err).toBe('forbidden');
+});

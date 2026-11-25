@@ -623,4 +623,8 @@ export const EN: Record<string, string> = {
   "invalide": "invalid",
   "JSON invalide": "Invalid JSON",
   "Format non reconnu (attendu : bos-legacy-v1)": "Unrecognised format (expected: bos-legacy-v1)",
+  "Fichier trop volumineux : {0} dossiers, {1} au maximum par import. Découpez le fichier.": "File too large: {0} deals, {1} at most per import. Split the file.",
+  "PDF trop volumineux : 30 Mo au maximum. Collez plutôt les extraits utiles ci-dessus.": "PDF too large: 30 MB at most. Paste the relevant extracts above instead.",
+  "Fichier texte trop volumineux : 5 Mo au maximum.": "Text file too large: 5 MB at most.",
+  "Rôle à définir": "Role to be set",
 };

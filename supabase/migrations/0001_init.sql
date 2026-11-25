@@ -480,6 +480,25 @@ end $$;
 create trigger members_lock_status before update on public.members
   for each row execute function public.lock_member_status();
 
+-- At least one active admin must remain: demoting or denying the last one (oneself included)
+-- is refused, whoever runs the update. The advisory lock serialises concurrent admin changes,
+-- so two admins cannot demote each other at the same time.
+create function public.keep_an_admin() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if old.role = 'admin' and old.status = 'active'
+     and (new.role is distinct from 'admin' or new.status is distinct from 'active') then
+    perform pg_advisory_xact_lock(hashtext('bos.members.active_admins'));
+    if not exists (select 1 from public.members
+                   where role = 'admin' and status = 'active' and id <> old.id) then
+      raise exception 'at least one active admin must remain' using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end $$;
+create trigger members_keep_admin before update on public.members
+  for each row execute function public.keep_an_admin();
+
 -- Stamp who wrote admin-managed rows (not spoofable by the client).
 create function public.stamp_invited_by() returns trigger
 language plpgsql security definer set search_path = public as $$
