@@ -253,3 +253,33 @@ test('données manquantes : un lecteur voit la liste sans pouvoir la modifier', 
   await expect(card.getByLabel('Top 10 clients')).toHaveAttribute('readonly', '');
   await expect(card.getByRole('button', { name: 'Demander au vendeur' })).toHaveCount(0);
 });
+
+test('renommer le dossier depuis l’en-tête (crayon, Entrée, Échap)', async ({ page }) => {
+  await page.goto(`/projet/${DEMO}/synthese`);
+  await page.getByRole('button', { name: 'Renommer le dossier' }).click();
+  const input = page.getByRole('textbox', { name: 'Nom du dossier' });
+  await input.fill('Projet Hélios – offre ferme');
+  await input.press('Enter');
+  await expect(page.getByRole('heading', { level: 1, name: 'Projet Hélios – offre ferme' })).toBeVisible();
+  await expect(page.locator('.crumb strong')).toHaveText('Projet Hélios – offre ferme');
+  // Escape cancels, an empty name is ignored.
+  await page.getByRole('heading', { level: 1 }).dblclick();
+  await input.fill('Autre nom');
+  await input.press('Escape');
+  await expect(page.getByRole('heading', { level: 1, name: 'Projet Hélios – offre ferme' })).toBeVisible();
+  await page.getByRole('button', { name: 'Renommer le dossier' }).click();
+  await input.fill('   ');
+  await input.press('Enter');
+  await expect(page.getByRole('heading', { level: 1, name: 'Projet Hélios – offre ferme' })).toBeVisible();
+  // The new name shows in Mes dossiers (client-side navigation keeps the memory data).
+  await page.locator('.crumb').getByRole('link', { name: 'Mes dossiers' }).click();
+  await expect(page).toHaveURL(/\/dossiers$/);
+  await expect(page.getByText('Projet Hélios – offre ferme').first()).toBeVisible();
+});
+
+test('un lecteur ne peut pas renommer', async ({ page }) => {
+  await page.goto('/login?as=reader');
+  await page.goto(`/projet/${DEMO}/synthese`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Projet Hélios' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Renommer le dossier' })).toHaveCount(0);
+});

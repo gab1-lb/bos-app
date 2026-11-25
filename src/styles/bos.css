@@ -546,3 +546,7 @@ dialog.tourdlg video { display: block; width: 100%; height: auto; max-height: ca
   .mask:empty { display: none; }
   .mctl .in.mtxt { width: 100%; }
 }
+
+/* Inline deal rename */
+.h1in { font-size: clamp(26px, 2.6vw, 38px); font-weight: 650; letter-spacing: -1px; padding: 4px 10px; min-width: min(520px, 100%); }
+.iconbtn.rename:hover { color: var(--blue); background: var(--soft); }

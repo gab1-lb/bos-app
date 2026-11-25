@@ -13,13 +13,23 @@ import { Icon } from '../ui/Icon';
 import { useProject } from './ProjectContext';
 
 export function PageHead() {
-  const { deal: d, meta, members, c, id, editable, mandate } = useProject();
+  const { deal: d, meta, members, c, id, editable, mandate, patch } = useProject();
   const { toast, repo } = useApp();
   const { t, locale } = useI18n();
   const [im, setIm] = useState(false);
   const [xlsxBusy, setXlsxBusy] = useState(false);
   const [msg, setMsg] = useState<{ key: TemplateKey; templates: Template[]; at: Date } | null>(null);
   const owner = members.find((m) => m.id === meta.ownerId);
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState('');
+  const startRename = () => { if (!editable) return; setDraft(d.name); setRenaming(true); };
+  const saveRename = () => {
+    const name = draft.trim().replace(/\s+/g, ' ');
+    setRenaming(false);
+    if (!name || name === d.name) return;
+    patch(['name'], name.slice(0, 120));
+    toast(t('Dossier renommé'));
+  };
 
   const memo = () => {
     try { toast(t('Fichier prêt : {0}', exportMemo(d, meta, c, locale))); }
@@ -46,7 +56,18 @@ export function PageHead() {
       <div className="pagehead">
         <div>
           <div className="titleline">
-            <h1>{d.name}</h1>
+            {renaming ? (
+              <input id="f-deal-name" className="in h1in" aria-label={t('Nom du dossier')} autoFocus value={draft} maxLength={120}
+                onChange={(e) => setDraft(e.target.value)} onBlur={saveRename}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveRename(); } if (e.key === 'Escape') { e.preventDefault(); setRenaming(false); } }} />
+            ) : (
+              <h1 onDoubleClick={startRename} title={editable ? t('Double-cliquez pour renommer') : undefined}>{d.name}</h1>
+            )}
+            {editable && !renaming && (
+              <button type="button" className="iconbtn rename" onClick={startRename} aria-label={t('Renommer le dossier')} title={t('Renommer le dossier')}>
+                <Icon name="pencil" />
+              </button>
+            )}
             {d.example && <span className="tag">{t('Dossier exemple')}</span>}
             {meta.archived && <span className="tag archived" data-archived>{t('Archivé')}</span>}
           </div>

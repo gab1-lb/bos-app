@@ -689,4 +689,8 @@ export const EN: Record<string, string> = {
   "Capex : {0}": "Capex: {0}",
   "Paramètres du DCF (WACC supérieur à g)": "DCF inputs (WACC above g)",
   "Comptes de résultat des cinq derniers exercices : CA, EBITDA et capex": "Income statements for the last five fiscal years: revenue, EBITDA and capex",
+  "Renommer le dossier": "Rename deal",
+  "Nom du dossier": "Deal name",
+  "Dossier renommé": "Deal renamed",
+  "Double-cliquez pour renommer": "Double-click to rename",
 };
