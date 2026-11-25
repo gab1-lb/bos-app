@@ -242,8 +242,14 @@ function variables(ctx: RenderCtx, key: TemplateKey): Record<string, string> {
   };
 }
 
+/** Internal figures (price limit, hurdle, value range, IRR): only internal messages may show them. */
+const CONFIDENTIAL = ['maxPrice', 'hurdle', 'range', 'irr'];
+const INTERNAL_KEYS: TemplateKey[] = ['bote_review', 'committee_note'];
+
 export function renderTemplate(tpl: Template, ctx: RenderCtx): { subject: string; body: string; missing: string[] } {
   const vars = variables(ctx, tpl.key);
+  // Even if an admin adds them to an external template, they render as a placeholder, never as the figure.
+  if (!INTERNAL_KEYS.includes(tpl.key)) for (const k of CONFIDENTIAL) vars[k] = '';
   const placeholder = ctx.locale === 'en' ? '[to complete]' : '[à compléter]';
   const missing: string[] = [];
   const sub = (s: string) =>

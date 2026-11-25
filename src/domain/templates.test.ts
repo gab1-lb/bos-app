@@ -45,6 +45,40 @@ describe('templates', () => {
   });
 });
 
+describe('confidentiality of external messages', () => {
+  // The deal's confidential figures, as the internal templates would render them.
+  const secrets = (locale: 'fr' | 'en') => {
+    const r = renderTemplate({ key: 'committee_note', locale, subject: '', body: '{{maxPrice}}|{{hurdle}}|{{range}}|{{irr}}' }, ctx(demoDeal(), locale));
+    return nb(r.body).split('|');
+  };
+  const sentDeal = () => {
+    const d = demoDeal();
+    d.questions = d.questions.map((q, i) => ({ ...q, status: 'Envoyée', sentAt: ago(10 + i), awaitedFrom: i % 2 ? 'seller' : 'director' }));
+    return d;
+  };
+  it('the internal render really has values to leak (guard of the test itself)', () => {
+    for (const locale of ['fr', 'en'] as const) for (const v of secrets(locale)) expect(v).toMatch(/\d/);
+  });
+  it.each(['info_request', 'reminder'] as const)('%s never contains the max price, hurdle, value range or IRR', (key) => {
+    for (const locale of ['fr', 'en'] as const) {
+      for (const recipient of [undefined, 'seller', 'director'] as const) {
+        const r = renderTemplate(tpl(key, locale), { ...ctx(sentDeal(), locale), recipient });
+        const text = nb(r.subject + '\n' + r.body);
+        for (const v of secrets(locale)) expect(text).not.toContain(v);
+        for (const name of ['maxPrice', 'hurdle', 'range', 'irr']) expect(r.missing).not.toContain(name);
+      }
+    }
+  });
+  it('even a template edited by an admin cannot put them in an external message', () => {
+    for (const key of ['info_request', 'reminder', 'no_go', 'go_dd'] as const) {
+      const r = renderTemplate({ key, locale: 'fr', subject: '{{hurdle}}', body: '{{maxPrice}} {{range}} {{irr}}' }, ctx(demoDeal()));
+      const text = nb(r.subject + r.body);
+      for (const v of secrets('fr')) expect(text).not.toContain(v);
+      expect(text).toContain('[à compléter]');
+    }
+  });
+});
+
 describe('review fixes', () => {
   const Q = (q: string, o: object) => ({ id: q, q, cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...o });
   it('go_dd and no_go never disclose max price or hurdle', () => {
