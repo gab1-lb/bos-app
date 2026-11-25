@@ -1,6 +1,7 @@
 /* Calculs partagés par les onglets du projet (port de compute / ffRows / missingQuestions de legacy/app.js). */
 import { N, base, comps, dcf, maxPrice, returns } from '../../engine/finance';
 import { screen } from '../../engine/screen';
+import { SELLER_QUESTIONS, hasSimilarQuestion } from '../../domain/missing';
 import type { Base, CompsResult, Dcf, Deal, Mandate, Question, Returns, Screen } from '../../engine/types';
 
 export type ValKind = 'evEbitda' | 'evRev' | 'dcf' | 'maxPrice';
@@ -56,20 +57,20 @@ export function gaugeLabels(row: ValRow, c: Computed, d: Deal, f: Fx): { label: 
   }
 }
 
-/** Données de la grille sans question associée : [libellé, question FR, thème, priorité]. */
+/** Données de la grille sans question associée : [libellé, question, thème, priorité]. */
 export function missingQuestions(d: Deal, b: Base, tr: (k: string) => string): [string, string, string, string][] {
-  const have = (d.questions || []).map((q) => (q.q || '').toLowerCase());
-  const list: [string, boolean, string, string, string][] = [
-    ['Top 10 clients', b.top10 == null, 'Quelle part du CA représentent les dix premiers clients ?', 'Commercial', 'Décisive'],
-    ['Dette nette', b.netDebt == null, 'Montant et détail de la dette financière nette à la clôture', 'Financier', 'Décisive'],
-    ['Prix demandé', b.ask == null, 'Quelle valeur d’entreprise le vendeur attend-il pour 100 % du capital ?', 'Financier', 'Décisive'],
-    ['Churn clients', b.churn == null, 'Taux annuel de perte de clients sur trois exercices', 'Commercial', 'Importante'],
-    ['Revenus récurrents', b.recurring == null, 'Répartition du CA : abonnements, maintenance, licences, services', 'Financier', 'Importante'],
-    ['ARR', b.arr == null, 'Revenu récurrent annualisé à la clôture et sa formation', 'Financier', 'Normale'],
+  const Q = SELLER_QUESTIONS;
+  const list: [string, boolean, (typeof Q)[keyof typeof Q]][] = [
+    ['Top 10 clients', b.top10 == null, Q.top10],
+    ['Dette nette', b.netDebt == null, Q.netDebt],
+    ['Prix demandé', b.ask == null, Q.askPrice],
+    ['Churn clients', b.churn == null, Q.churn],
+    ['Revenus récurrents', b.recurring == null, Q.recurring],
+    ['ARR', b.arr == null, Q.arr],
   ];
   return list
-    .filter((x) => x[1] && !have.some((h) => h.includes(tr(x[2]).toLowerCase().slice(0, 25))))
-    .map((x) => [x[0], tr(x[2]), x[3], x[4]]);
+    .filter(([, miss, x]) => miss && !hasSimilarQuestion(d.questions, x.q, tr))
+    .map(([label, , x]) => [label, tr(x.q), x.cat, x.priority]);
 }
 
 /** Copie de `obj` avec la valeur au chemin donné (mise à jour optimiste). */

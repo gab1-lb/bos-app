@@ -197,3 +197,59 @@ test('un dossier archivé l’affiche dans l’en-tête du projet', async ({ pag
   await expect(page.locator('[data-archived]')).toHaveText('Archivé');
   await expect(page.getByRole('note').filter({ hasText: 'Dossier archivé' })).toBeVisible();
 });
+
+test('données manquantes : saisie sur la synthèse, le critère passe en Favorable', async ({ page }) => {
+  await page.goto(`/projet/${DEMO}/synthese`);
+  const card = page.locator('.mdata');
+  const factor = page.locator('.factor').filter({ hasText: 'Poids des 10 premiers clients' });
+  await expect(card.getByText('Top 10 clients')).toBeVisible();
+  await expect(card.locator('[data-missing="kpi.top10"]')).toContainText('Demandé au vendeur'); // the demo already asks it
+  await expect(factor).toContainText('À obtenir');
+  const top10 = card.getByLabel('Top 10 clients');
+  await top10.fill('19');
+  await top10.press('Enter');
+  await expect(card.getByText('Top 10 clients')).toHaveCount(0);
+  await expect(card).toContainText('Toutes les données sont renseignées');
+  await expect(factor).toContainText('Favorable');
+});
+
+test('données manquantes : demander au vendeur ajoute la question aux demandes', async ({ page }) => {
+  await page.goto(`/projet/${DEMO}/financiers`);
+  const nd = page.getByLabel('Dette nette');
+  await nd.fill('');
+  await nd.press('Enter');
+  await openTab(page, 'Synthèse');
+  const row = page.locator('.mdata [data-missing="bs.netDebt"]');
+  await expect(row.getByLabel('Dette nette')).toBeVisible();
+  await row.getByRole('button', { name: 'Demander au vendeur' }).click();
+  await expect(row).toContainText('Demandé au vendeur');
+  await expect(row.getByRole('button', { name: 'Demander au vendeur' })).toHaveCount(0);
+  await openTab(page, 'Demandes d’infos');
+  await expect(page.locator('[data-question] input[aria-label="Question"]').last())
+    .toHaveValue('Montant et détail de la dette financière nette à la clôture');
+});
+
+test('données manquantes : « Compléter » ouvre le bon onglet sur le bon champ', async ({ page }) => {
+  await page.goto(`/projet/${DEMO}/synthese`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Projet Hélios' })).toBeVisible();
+  const id = await page.evaluate(async (deal) => {
+    const w = window as unknown as { __bosRepo: { createDeal(d: unknown): Promise<string> }; __bosGo(p: string): void };
+    const newId = await w.__bosRepo.createDeal(deal);
+    w.__bosGo(`/projet/${newId}/synthese`);
+    return newId;
+  }, blankDeal('Dossier vierge'));
+  await expect(page.getByRole('heading', { level: 1, name: 'Dossier vierge' })).toBeVisible();
+  const card = page.locator('.mdata');
+  await card.getByRole('button', { name: /^Thèse/ }).click();
+  await card.locator('[data-missing="thesis"]').getByRole('link', { name: 'Compléter' }).click();
+  await expect(page).toHaveURL(new RegExp(`/projet/${id}/demandes#f-thesis$`));
+  await expect(page.locator('[id="f-thesis"]')).toBeFocused();
+});
+
+test('données manquantes : un lecteur voit la liste sans pouvoir la modifier', async ({ page }) => {
+  await page.goto('/login?as=reader');
+  await page.goto(`/projet/${DEMO}/synthese`);
+  const card = page.locator('.mdata');
+  await expect(card.getByLabel('Top 10 clients')).toHaveAttribute('readonly', '');
+  await expect(card.getByRole('button', { name: 'Demander au vendeur' })).toHaveCount(0);
+});
