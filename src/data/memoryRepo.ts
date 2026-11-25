@@ -7,7 +7,11 @@ import type { Locale } from '../i18n/format';
 import { admin, PERSONAS } from './personas';
 import { RepoError, type ActivityEntry, type DealRecord, type Repo } from './repo';
 
-export type MemoryRepo = Repo & { asMember(id: string): void };
+export type MemoryRepo = Repo & {
+  asMember(id: string): void;
+  /** Memory mode only: restores a role / status decided earlier (no permission check). */
+  overrideMember(id: string, patch: Partial<Pick<Member, 'role' | 'status'>>): void;
+};
 export type MemoryRepoOptions = { me?: Member; members?: Member[]; now?: () => Date };
 
 const DECISIONS: Decision[] = ['go_dd', 'indicative_offer', 'no_go'];
@@ -75,6 +79,12 @@ export function createMemoryRepo(opts: MemoryRepoOptions = {}): MemoryRepo {
     asMember(id) {
       if (!memberList.some((m) => m.id === id)) throw new RepoError('not_found', `unknown member ${id}`);
       meId = id;
+    },
+    overrideMember(id, patch) {
+      const m = memberList.find((x) => x.id === id);
+      if (!m) return;
+      if (patch.role !== undefined) m.role = patch.role;
+      if (patch.status !== undefined) m.status = patch.status;
     },
     async me() { return clone(memberList.find((m) => m.id === meId) ?? null); },
     async listDeals() {

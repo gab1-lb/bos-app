@@ -415,3 +415,60 @@ dialog footer .copied.bad { color: var(--bad); }
 .ib .iconbtn:hover { color: var(--blue); }
 .msgpick .internal { display: flex; align-items: flex-end; padding-bottom: 6px; }
 dialog footer .mailhint { align-self: center; font-size: 12.5px; color: var(--warn); max-width: 260px; text-align: right; line-height: 1.35; }
+
+/* Mes dossiers */
+.filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.filter { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.filter select.in { min-width: 150px; padding: 6px 8px; }
+.filters .link { align-self: center; padding-top: 16px; }
+.tag.xs { padding: 1px 6px; font-size: 11.5px; margin-left: 8px; vertical-align: 1px; }
+.dealtable td { vertical-align: top; }
+.dealtable td .mini { white-space: nowrap; }
+.dealtable tbody:hover td, .dealtable tbody.asking td { background: var(--soft-2); }
+.dealtable tbody.archived td { color: var(--muted); }
+.dealtable tbody.archived .pipe-name { color: var(--muted); }
+.dealtable tbody.asking tr:first-child td { border-bottom: 0; }
+.dealtable tr.confirmrow td { padding-top: 0; white-space: normal; }
+.confirmrow .confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--bad-soft); border: 1px solid var(--bad-line); font-weight: 560; }
+.confirmrow .confirm .dim { font-weight: 450; color: var(--muted); }
+.confirmrow .confirm > span { margin-right: auto; }
+.confirmrow .confirm .icon { width: 16px; height: 16px; }
+.stagecell { display: grid; gap: 2px; justify-items: start; }
+.rowacts { display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end; }
+.rowacts .iconbtn:hover { color: var(--blue); }
+.rowacts .iconbtn.del:hover { color: var(--bad); }
+.iconbtn:disabled, .btn:disabled { opacity: .5; cursor: default; }
+.btn.danger:hover { background: var(--bad-soft); }
+
+/* Fenêtres d'import */
+dialog.tooldlg[open] { display: flex; flex-direction: column; }
+dialog.tooldlg .body { overflow-y: auto; min-height: 0; }
+.pdficon.json { background: var(--blue-soft); color: var(--blue); }
+.report { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft-2); font-size: 14px; }
+.report > p { display: flex; align-items: center; gap: 8px; }
+.report .icon { width: 16px; height: 16px; }
+.replist { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.replist li { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--ink-2); }
+.replist.bad li { color: var(--bad); font-size: 13px; }
+
+/* Administration */
+.admin .in.wide { width: 100%; text-align: left; }
+.admin .members td { vertical-align: middle; }
+.admin .members .person > span { display: grid; }
+.admin .members .person small { display: inline; }
+.admin .members tr.denied td:first-child { opacity: .6; }
+.admin .members select.in { min-width: 130px; }
+.invite { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: end; }
+.invite select.in { min-width: 130px; padding: 6px 8px; }
+@media (max-width: 640px) { .invite { grid-template-columns: minmax(0, 1fr); } }
+.tpl { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 22px; }
+.tpl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; align-content: start; }
+.tpl-list button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 7px; text-align: left; font-size: 13.5px; color: var(--ink-2); border: 1px solid transparent; }
+.tpl-list button:hover { background: var(--soft); }
+.tpl-list button.on { background: var(--blue-soft); border-color: var(--blue-line); color: var(--blue-ink); font-weight: 560; }
+.tpl-tags { display: inline-flex; align-items: center; gap: 4px; }
+.tpl-tags .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
+textarea.in.tpl-body { min-height: 300px; font-size: 13.5px; }
+.tpl-vars { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tpl-vars code { font-size: 12px; padding: 2px 6px; border-radius: 4px; background: var(--soft); border: 1px solid var(--line-2); color: var(--ink-2); }
+@media (max-width: 900px) { .tpl { grid-template-columns: minmax(0, 1fr); } }

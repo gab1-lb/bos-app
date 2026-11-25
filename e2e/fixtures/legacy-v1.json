@@ -1,0 +1,26 @@
+{
+  "format": "bos-legacy-v1",
+  "exportedAt": "2026-11-20T10:00:00.000Z",
+  "deals": [
+    {
+      "id": "legacy-signe",
+      "name": "Projet Atlas",
+      "sector": "Logiciel",
+      "country": "France",
+      "stage": "Signé",
+      "team": "Camille, Hugo",
+      "hist": { "years": [2021, 2022, 2023, 2024, 2025], "rev": [8, 9, 10.2, 11.5, 12.4], "ebitda": [1.6, 1.9, 2.3, 2.8, 3.1], "capex": [0.3, 0.3, 0.4, 0.4, 0.5] },
+      "kpi": { "recurring": 78, "churn": 5 },
+      "askPrice": 30,
+      "questions": [{ "q": "Détail de la dette nette", "cat": "Financier", "priority": "Décisive", "status": "Ouverte", "answer": "" }]
+    },
+    {
+      "id": "legacy-preselection",
+      "name": "Projet Borée",
+      "sector": "SaaS",
+      "country": "Belgique",
+      "stage": "Présélection"
+    },
+    "pas un dossier"
+  ]
+}

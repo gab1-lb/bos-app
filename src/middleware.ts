@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { MEMORY_COOKIE, isMemoryMode, memoryStatus, personaIdForRole } from './lib/session';
+import { MEMORY_COOKIE, MEMORY_MEMBERS_COOKIE, isMemoryMode, memoryStatus, parseOverrides, personaIdForRole } from './lib/session';
 
 const PUBLIC = ['/login', '/auth/callback', '/attente'];
 const isPublic = (path: string) => PUBLIC.some((p) => path === p || path.startsWith(`${p}/`));
@@ -15,19 +15,24 @@ function redirect(req: NextRequest, path: string, base?: NextResponse) {
   return res;
 }
 
+const NOT_ACTIVE = { pending: '/attente', denied: '/attente?refus=1' } as const;
+
 async function memoryGate(req: NextRequest) {
   const path = req.nextUrl.pathname;
+  // Role / status decisions an admin made in this browser (memory mode keeps no server state).
+  const overrides = parseOverrides(req.cookies.get(MEMORY_MEMBERS_COOKIE)?.value);
   if (path === '/login') {
     const id = personaIdForRole(req.nextUrl.searchParams.get('as'));
     if (!id) return NextResponse.next();
-    const res = redirect(req, memoryStatus(id) === 'pending' ? '/attente' : '/');
+    const status = memoryStatus(id, overrides);
+    const res = redirect(req, status === 'pending' || status === 'denied' ? NOT_ACTIVE[status] : '/');
     res.cookies.set(MEMORY_COOKIE, id, { path: '/', sameSite: 'lax' });
     return res;
   }
   if (isPublic(path)) return NextResponse.next();
-  const status = memoryStatus(req.cookies.get(MEMORY_COOKIE)?.value);
+  const status = memoryStatus(req.cookies.get(MEMORY_COOKIE)?.value, overrides);
   if (status === 'none') return redirect(req, '/login');
-  if (status === 'pending') return redirect(req, '/attente');
+  if (status === 'pending' || status === 'denied') return redirect(req, NOT_ACTIVE[status]);
   return NextResponse.next();
 }
 

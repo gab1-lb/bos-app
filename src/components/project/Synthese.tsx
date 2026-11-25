@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { N } from '../../engine/finance';
-import type { Criterion, ScreenReason } from '../../engine/types';
+import type { Criterion } from '../../engine/types';
 import { can } from '../../domain/permissions';
 import { phaseLabel, suggestNextPhase } from '../../domain/phases';
 import { useI18n, type I18n } from '../../lib/repo-context';
@@ -14,25 +14,9 @@ import { Reveal } from '../ui/Reveal';
 import { Gauges } from '../valuation/Gauges';
 import { gaugeLabels } from './compute';
 import { useProject } from './ProjectContext';
-import { TAG, VCLS } from './verdict';
+import { MKEY, TAG, VCLS, headlineKey, reasonText } from './verdict';
 
 const ok = (n: number | null | undefined): n is number => n != null && Number.isFinite(n);
-const HEAD: Record<string, string> = { go: 'Opportunité à poursuivre', nego: 'Prix à négocier', price: 'Prix à obtenir', coverage: 'Données insuffisantes', mandate: 'Cible hors mandat', weak: 'Réserves fortes' };
-export const MKEY: Record<string, string> = { geo: 'Zone géographique', sector: 'Secteur', minRev: 'CA minimum', maxRev: 'CA maximum', minRecurring: 'Récurrence minimale', minMargin: 'Marge d’EBITDA minimale' };
-
-function reasonText(r: ScreenReason, f: I18n): string {
-  switch (r[0]) {
-    case 'go': return f.t('TRI de {0} au prix d’entrée, au-dessus du seuil de {1}.', f.pc(r[1]), f.pc(r[2], 0));
-    case 'nego': return f.t('TRI de {0} au prix d’entrée, sous le seuil de {1}.', f.pc(r[1]), f.pc(r[2], 0));
-    case 'noPrice': return f.t('Sans prix demandé ni VE d’entrée, le rendement ne peut pas être jugé.');
-    case 'coverage': return f.t('Couverture de la grille : {0}. Seuil de décision : 70 %.', f.pc(r[1], 0));
-    case 'weak': return f.t('Qualité de l’actif ou rendement insuffisants au regard de la grille.');
-    case 'ko': return f.t('Critère du mandat non satisfait : {0}.', r[1].map((x) => f.t(MKEY[x]).toLowerCase()).join(', '));
-    case 'openQ': return r[1] > 1 ? f.t('{0} questions décisives restent ouvertes.', r[1]) : f.t('Une question décisive reste ouverte.');
-    case 'unknown': return f.t('Critère du mandat à documenter : {0}.', r[1].map((x) => f.t(MKEY[x]).toLowerCase()).join(', '));
-  }
-}
-
 function Delta({ cur, prev, pts, f }: { cur: number | null; prev: number | null; pts?: boolean; f: I18n }) {
   if (!ok(cur) || !ok(prev) || prev === 0) return null;
   const v = pts ? cur - prev : 100 * (cur / prev - 1);
@@ -50,7 +34,7 @@ export function Synthese() {
     .sort((x, y) => (x.priority === 'Décisive' ? 0 : 1) - (y.priority === 'Décisive' ? 0 : 1));
   const margins = h.rev.map((r, i) => (r != null && r > 0 && ok(N(h.ebitda[i])) ? (100 * (h.ebitda[i] as number)) / r : null));
   const known = sc.crit.filter((k) => k.pts != null).length;
-  const headline = sc.code === 'go' ? HEAD.go : sc.code === 'nego' ? HEAD.nego : HEAD[sc.sub] || HEAD.weak;
+  const headline = headlineKey(sc);
   const next = suggestNextPhase(meta, sc);
   const canNext = next && me && can(me, `setPhase:${next}`, meta);
   const sig = (k: Criterion) => k.pts == null ? <Chip tone="amber">{t('À obtenir')}</Chip>

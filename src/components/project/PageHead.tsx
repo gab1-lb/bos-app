@@ -1,14 +1,32 @@
 'use client';
 import Link from 'next/link';
+import { useState } from 'react';
 import { decisionLabel, phaseLabel } from '../../domain/phases';
-import { useI18n } from '../../lib/repo-context';
+import { exportMemo } from '../../lib/exports/memo';
+import { exportXlsx } from '../../lib/exports/xlsx';
+import { useApp, useI18n } from '../../lib/repo-context';
+import { ImDialog } from '../dossiers/ImDialog';
 import { Icon } from '../ui/Icon';
 import { useProject } from './ProjectContext';
 
 export function PageHead() {
-  const { deal: d, meta, members } = useProject();
+  const { deal: d, meta, members, c, id, editable } = useProject();
+  const { toast } = useApp();
   const { t, locale } = useI18n();
+  const [im, setIm] = useState(false);
+  const [xlsxBusy, setXlsxBusy] = useState(false);
   const owner = members.find((m) => m.id === meta.ownerId);
+
+  const memo = () => {
+    try { toast(t('Fichier prêt : {0}', exportMemo(d, meta, c, locale))); }
+    catch { toast(t('Le téléchargement n’est pas disponible ici.'), true); }
+  };
+  const xlsx = async () => {
+    setXlsxBusy(true);
+    try { toast(t('Fichier prêt : {0}', await exportXlsx(d, meta, c, locale))); }
+    catch { toast(t('Module Excel indisponible.'), true); }
+    finally { setXlsxBusy(false); }
+  };
   return (
     <>
       <div className="crumb">
@@ -29,7 +47,13 @@ export function PageHead() {
             {owner && <><i className="sep">·</i><span><Icon name="user" />{t('Responsable')} : {owner.name}</span></>}
           </div>
         </div>
+        <div className="actions">
+          <button type="button" className="btn" onClick={memo}><Icon name="file" />{t('Note de comité')}</button>
+          <button type="button" className="btn" disabled={xlsxBusy} aria-busy={xlsxBusy || undefined} onClick={xlsx}><Icon name="download" />Excel</button>
+          {editable && <button type="button" className="btn primary" onClick={() => setIm(true)}><Icon name="upload" />{t('Importer un IM')}</button>}
+        </div>
       </div>
+      {im && <ImDialog target={{ id, deal: d, editable }} onClose={() => setIm(false)} />}
     </>
   );
 }
