@@ -8,3 +8,9 @@ test('hors mode mémoire, /login?as=admin affiche seulement la page de connexion
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
 });
+
+test('mode Supabase : la CSP autorise l’API Supabase et rien d’autre', async ({ request }) => {
+  const csp = (await request.get('/login')).headers()['content-security-policy'];
+  expect(csp).toMatch(/connect-src 'self' http:\/\/127\.0\.0\.1:54321 ws:\/\/127\.0\.0\.1:54321/);
+  expect(csp).toContain("frame-ancestors 'none'");
+});
