@@ -8,7 +8,7 @@ export const isMemoryMode = () => process.env.NEXT_PUBLIC_DATA_MODE === 'memory'
 /** Public demo build (memory data, visitors enter without an account). */
 export const isDemo = () => isMemoryMode() && process.env.NEXT_PUBLIC_DEMO === '1';
 /** Role a demo visitor starts with. */
-export const DEMO_ROLE = 'analyst';
+export const DEMO_ROLE = 'analyst' as const;
 
 /** Memory mode only: the "session" is this cookie, holding a persona id. */
 export const MEMORY_COOKIE = 'bos_as';
@@ -70,6 +70,8 @@ export function getMemorySessionRepo(): Repo {
   for (const [id, p] of Object.entries(parseOverrides(readCookie(MEMORY_MEMBERS_COOKIE)))) repo.overrideMember(id, p);
   const m = readCookie(MEMORY_COOKIE);
   if (m) repo.asMember(decodeURIComponent(m));
+  // Demo without cookies (refused by the browser): the default persona, as the middleware assumed.
+  else if (isDemo()) repo.asMember(PERSONA_BY_ROLE[DEMO_ROLE].id);
   return {
     ...repo,
     async setMember(id: string, patch: Partial<Pick<Member, 'role' | 'status'>>) {

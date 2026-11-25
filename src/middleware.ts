@@ -23,7 +23,7 @@ async function memoryGate(req: NextRequest) {
   const overrides = parseOverrides(req.cookies.get(MEMORY_MEMBERS_COOKIE)?.value);
   if (path === '/login') {
     const id = personaIdForRole(req.nextUrl.searchParams.get('as'));
-    if (!id) return isDemo() ? redirect(req, `/login?as=${DEMO_ROLE}`) : NextResponse.next();
+    if (!id) return isDemo() ? redirect(req, '/') : NextResponse.next();
     const status = memoryStatus(id, overrides);
     const next = req.nextUrl.searchParams.get('next');
     const home = next && /^\/(?![/\\])/.test(next) && !next.startsWith('/login') ? next : '/';
@@ -33,8 +33,14 @@ async function memoryGate(req: NextRequest) {
   }
   if (isPublic(path)) return NextResponse.next();
   const status = memoryStatus(req.cookies.get(MEMORY_COOKIE)?.value, overrides);
-  // Demo visitors enter straight away, on the page their link pointed to.
-  if (status === 'none') return redirect(req, isDemo() ? `/login?as=${DEMO_ROLE}&next=${encodeURIComponent(path + req.nextUrl.search)}` : '/login');
+  if (status === 'none' && isDemo()) {
+    // Demo visitors enter straight away, on the page their link pointed to, as the default persona.
+    // No redirect: where cookies are refused (embedded previews, strict browsers) a redirect would loop.
+    const res = NextResponse.next();
+    res.cookies.set(MEMORY_COOKIE, personaIdForRole(DEMO_ROLE)!, { path: '/', sameSite: 'lax' });
+    return res;
+  }
+  if (status === 'none') return redirect(req, '/login');
   if (status === 'pending' || status === 'denied') return redirect(req, NOT_ACTIVE[status]);
   return NextResponse.next();
 }
