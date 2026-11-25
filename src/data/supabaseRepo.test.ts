@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activityFromRow, mapPgError, memberFromRow, metaToImportJson, rowToDealRecord, type DealRow } from './supabaseRepo';
+import { activityFromRow, createSupabaseRepo, mapPgError, memberFromRow, metaToImportJson, rowToDealRecord, type DealRow } from './supabaseRepo';
 import { RepoError } from './repo';
 
 const row: DealRow = {
@@ -52,5 +52,14 @@ describe('rowToDealRecord normalisation', () => {
   it('reports nothing unsaved when every item has an id', () => {
     const r = rowToDealRecord({ ...row, data: { name: 'N', questions: [{ id: 'q', q: 'a' }] } });
     expect(r.unsavedIds).toBeUndefined();
+  });
+});
+
+describe('invite', () => {
+  it('upserts on the e-mail, lower-cased, so a re-invite updates the role', async () => {
+    const calls: unknown[] = [];
+    const client = { from: (t: string) => ({ upsert: async (row: unknown, o: unknown) => { calls.push([t, row, o]); return { error: null }; } }) };
+    await createSupabaseRepo(client as never).invite(' Guest@Partner.FR ', 'reader');
+    expect(calls).toEqual([['invites', { email: 'guest@partner.fr', role: 'reader' }, { onConflict: 'email' }]]);
   });
 });

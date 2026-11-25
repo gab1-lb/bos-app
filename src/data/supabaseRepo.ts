@@ -165,7 +165,8 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
       if (!data || data.length === 0) throw new RepoError('forbidden', 'member not updated (not found or not allowed)');
     },
     async invite(email, role) {
-      const { error } = await client.from('invites').insert({ email: email.trim().toLowerCase(), role });
+      // Re-inviting the same address (or changing its role) updates the invitation instead of a duplicate-key error.
+      const { error } = await client.from('invites').upsert({ email: email.trim().toLowerCase(), role }, { onConflict: 'email' });
       check(error);
     },
     async mandate() {
