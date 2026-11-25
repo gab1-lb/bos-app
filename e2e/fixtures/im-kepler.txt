@@ -1,0 +1,85 @@
+=== page 1
+M É M O R A N D U M D ' I N F O R M A T I O N · S T R I C T E M E N T C O N F I D E N T I E L
+Projet Kepler
+Cession de 100 % du capital de VetoSoft SAS
+Éditeur de logiciels de gestion pour cliniques vétérinaires
+Conseil du vendeur  Banque Fictive Partners (exemple)
+Novembre 2026
+Document entièrement fictif, créé pour tester BOS. Toute ressemblance avec une société existante serait
+fortuite. Ce document est remis sous accord de confidentialité ; il ne constitue pas une offre.
+=== page 2
+1. Chiffres clés
+Secteur  Logiciel vertical B2B SaaS
+Pays  France
+Exercice clos en 2025
+Chiffre d'affaires  15,2 M€
+EBITDA  3,8 M€
+ARR  12,6 M€
+Revenus récurrents  81 %
+Churn clients  3,8 %
+Top 10 clients  19 % du chiffre d'affaires
+Dette nette  2,4 M€
+Valorisation attendue  52,0 M€
+En bref
+N°2 français des logiciels de gestion pour cliniques vétérinaires, 2 300
+établissements clients.
+Modèle par abonnement mensuel : dossier patient, agenda, facturation, stock, télé-
+rappels.
+118 salariés, siège à Nantes, équipe R&D de 41 personnes.
+Croissance organique de 17,8 % en 2025, rétention nette de 106 %.
+=== page 3
+2. Activité et marché
+VetoSoft commercialise une suite logicielle par abonnement destinée aux cliniques
+vétérinaires indépendantes et aux groupements. Le logiciel est hébergé dans le cloud 89
+% des clients migrés à fin 2025 et facturé au poste.
+Clients
+Nombre de clients  2 300 cliniques 1 980 en 2024.
+Revenu moyen par clinique : environ 6 600 € par an.
+Le premier client (groupement de 140 cliniques) pèse 6 % du chiffre d'affaires.
+Marché
+Environ 7 000 cliniques en France ; croissance du marché adressable estimée à 6 % par
+an, portée par la consolidation des cliniques en réseaux. Concurrents principaux : deux
+éditeurs nationaux et un acteur international.
+Effectif
+118 salariés ETP  41 R&D, 34 support et déploiement, 25 commerce et marketing, 18
+fonctions support.
+=== page 4
+3. Historique financier M€
+Exercice 2021 2022 2023 2024 2025
+Ventes totales 7,9 9,4 11,0 12,9 15,2
+Excédent brut (publié) 1,2 1,6 2,2 2,9 3,8
+Investissements (capex) 0,4 0,5 0,5 0,6 0,7
+Revenu récurrent annualisé 5,9 7,2 8,6 10,4 12,6
+Retraitements proposés par le vendeur (inclus dans l'excédent brut publié 2025
+Rémunération du dirigeant ramenée au marché : 0,20 M€ (inclus)
+Honoraires de conseil liés à la cession : 0,15 M€ (non inclus)
+Note du conseil  0,40 M€ de frais de R&D sont capitalisés au bilan chaque année.
+Bilan à la clôture 2025
+Dettes bancaires  3,9 M€ ; trésorerie  1,5 M€.
+Éléments assimilés à de la dette  0,6 M€ (indemnités de fin de carrière et
+complément de prix d'une acquisition 2023.
+Besoin en fonds de roulement négatif : environ 9 % des ventes (abonnements
+facturés d'avance).
+=== page 5
+4. Plan d'affaires du management 20262030
+M€ 2026 2027 2028 2029 2030
+Croissance des ventes 15 % 13 % 12 % 10 % 9 %
+Marge d'excédent brut 25,5 % 26,5 % 27,5 % 28,5 % 29,0 %
+Capex en % des ventes 4,5 % 4,5 % 4,5 % 4,5 % 4,5 %
+Hypothèses : hausse tarifaire annuelle de 3 %, 250 à 300 nouvelles cliniques par an, lancement d'un module
+de télé-consultation en 2027. Taux d'impôt normatif  25 %.
+Opportunités pour un acquéreur
+Mutualisation de l'hébergement et des fonctions support (estimation  0,4 M€ par
+an).
+Vente croisée de modules de paiement intégré (estimation  0,3 M€ d'EBITDA par an
+à terme).
+=== page 6
+5. Processus
+Remise des offres indicatives  15 janvier 2027.
+Accès à la data room et rencontre du management : février 2027.
+Offres fermes : avril 2027. Signature visée : juin 2027.
+Points ouverts (à documenter en data room)
+Détail du churn par cohorte et par taille de clinique.
+Contrats des 10 premiers clients et clauses de changement de contrôle.
+Dépendance au fondateur, qui détient 72 % du capital et souhaite rester 18 mois.
+Document fictif  Projet Kepler  VetoSoft SAS (exemple). Contact : equipe-projet-kepler@example.com
