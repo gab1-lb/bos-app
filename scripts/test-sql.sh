@@ -59,6 +59,18 @@ for f in "$ROOT"/supabase/migrations/*.sql; do
   "${PSQL[@]}" -f "$f"
 done
 
+# The shipped seeds must run: seed.sql with its placeholders replaced, then seed-demo.sql
+# once the bootstrap admin has signed in (twice, to prove idempotence).
+echo "seed: seed.sql"
+sed -e "s/__ALLOWED_DOMAIN__/example.com/" -e "s/__ADMIN_EMAIL__/Admin@Example.com/" "$ROOT/supabase/seed.sql" | "${PSQL[@]}"
+"${PSQL[@]}" -c "select count(*) = 12 as ok from public.templates" -t | grep -q t || { echo "seed: expected 12 templates"; exit 1; }
+"${PSQL[@]}" -c "insert into auth.users (email, email_confirmed_at) values ('admin@example.com', now())"
+echo "seed: seed-demo.sql"
+"${PSQL[@]}" -f "$ROOT/supabase/seed-demo.sql"
+"${PSQL[@]}" -f "$ROOT/supabase/seed-demo.sql"
+"${PSQL[@]}" -c "select count(*) = 1 as ok from public.deals where owner_id is not null" -t | grep -q t || { echo "seed: expected 1 demo deal"; exit 1; }
+"${PSQL[@]}" -c "delete from public.activity; delete from public.deals; delete from public.templates; delete from public.mandate; delete from public.app_settings; delete from auth.users"
+
 status=0
 for f in "$ROOT"/supabase/tests/*.test.sql; do
   echo "test: $(basename "$f")"

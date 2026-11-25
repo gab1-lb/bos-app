@@ -2,12 +2,16 @@
   "name": "bos-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "gen:seed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gen-seed.ts",
     "record:tour": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/record-tour.ts"
   },
   "dependencies": {
@@ -26,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
     "typescript": "^5",
+    "vite": "^8.3.8",
     "vitest": "^5.1.1"
   }
 }

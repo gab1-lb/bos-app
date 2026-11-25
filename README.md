@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BOS
 
-## Getting Started
+BOS est l'outil d'équipe de l'acquéreur pour passer d'un mémorandum d'information (IM) à une note BOTe : dossiers, analyse financière (DCF, rendements, prix maximum), revue par un associé, comité, modèles d'e-mails, suivi des attentes et export Excel. Le texte est disponible en français et en anglais.
 
-First, run the development server:
+## Stack
+
+Next.js 15 (App Router) et TypeScript, Supabase (PostgreSQL, authentification Google, sécurité par ligne, temps réel) hébergé en région UE (Francfort), déploiement sur Vercel (région `fra1`). Node 22 minimum.
+
+## Développement local (mode mémoire, sans Supabase)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+NEXT_PUBLIC_DATA_MODE=memory npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvrez <http://localhost:3000/login?as=admin> pour entrer en administrateur (autres profils : voir `src/data/personas.ts`). Le mode mémoire est refusé par `npm run build` (production).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tests
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npx vitest run` : tests unitaires (moteur financier, domaine, dépôt de données, seed SQL).
+- `scripts/test-sql.sh` : migration, seed et règles de sécurité sur un PostgreSQL 16 jetable.
+- `npx playwright test --trace off` : tests de bout en bout.
+- `npm run gen:seed` : régénère `supabase/seed.sql` et `supabase/seed-demo.sql` depuis les sources TypeScript.
+- `npm run record:tour` : réenregistre la vidéo de démonstration.
 
-## Learn More
+## Mise en production
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Voir le guide pas à pas : [docs/INSTALLATION.md](docs/INSTALLATION.md).
