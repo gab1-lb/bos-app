@@ -627,4 +627,8 @@ export const EN: Record<string, string> = {
   "PDF trop volumineux : 30 Mo au maximum. Collez plutôt les extraits utiles ci-dessus.": "PDF too large: 30 MB at most. Paste the relevant extracts above instead.",
   "Fichier texte trop volumineux : 5 Mo au maximum.": "Text file too large: 5 MB at most.",
   "Rôle à définir": "Role to be set",
+  "Prendre en main BOS": "Getting started with BOS",
+  "Démonstration": "Demo",
+  "De l’import de l’IM à la note de comité.": "From importing the IM to the committee note.",
+  "Voir la vidéo": "Watch the video",
 };

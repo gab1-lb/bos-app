@@ -472,3 +472,28 @@ textarea.in.tpl-body { min-height: 300px; font-size: 13.5px; }
 .tpl-vars { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .tpl-vars code { font-size: 12px; padding: 2px 6px; border-radius: 4px; background: var(--soft); border: 1px solid var(--line-2); color: var(--ink-2); }
 @media (max-width: 900px) { .tpl { grid-template-columns: minmax(0, 1fr); } }
+
+/* Vidéo de prise en main (accueil) */
+.tourcard { display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr); align-items: center; gap: 24px; width: 100%; padding: 14px; text-align: left; transition: border-color .15s ease, box-shadow .15s ease; }
+.tourcard:hover { border-color: #cbd5e3; box-shadow: 0 6px 18px #152c520f; }
+.tourcard:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.tc-thumb { position: relative; display: block; aspect-ratio: 16 / 10; border-radius: 9px; overflow: hidden; background: linear-gradient(109deg, var(--navy-1), var(--navy-3)); border: 1px solid var(--line-2); }
+.tc-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
+.tourcard:hover .tc-thumb img { transform: scale(1.03); }
+.tc-thumb::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgb(13 27 48 / .38)); }
+.tc-play { position: absolute; left: 50%; top: 50%; z-index: 1; width: 54px; height: 54px; margin: -27px 0 0 -27px; display: grid; place-items: center; border-radius: 50%; background: rgb(16 32 59 / .86); color: #fff; box-shadow: 0 6px 18px rgb(13 27 48 / .35); transition: transform .15s ease, background .15s ease; }
+.tc-play .icon { width: 22px; height: 22px; margin-left: 3px; fill: currentColor; stroke: none; }
+.tourcard:hover .tc-play { transform: scale(1.06); background: var(--blue); }
+.tc-dur { position: absolute; right: 8px; bottom: 8px; z-index: 1; padding: 2px 7px; border-radius: 5px; background: rgb(13 27 48 / .82); color: #fff; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tc-text { display: grid; gap: 8px; justify-items: start; }
+.tc-text .eyebrow .icon { width: 13px; height: 13px; fill: currentColor; stroke: none; }
+.tc-title { font-size: 21px; font-weight: 640; letter-spacing: -.5px; color: var(--ink); }
+.tc-sub { color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+.tc-cta { margin-top: 4px; }
+.tc-cta .icon { width: 15px; height: 15px; }
+.tourcard:hover .tc-cta { text-decoration: underline; }
+@media (max-width: 720px) { .tourcard { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
+dialog.tourdlg { width: min(1120px, calc(100% - 24px)); }
+dialog.tourdlg[open] { display: flex; flex-direction: column; }
+dialog.tourdlg video { display: block; width: 100%; height: auto; max-height: calc(100vh - 140px); background: var(--navy-1); }
+@media (prefers-reduced-motion: reduce) { .tourcard:hover .tc-thumb img, .tourcard:hover .tc-play { transform: none; } }

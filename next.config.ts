@@ -10,6 +10,8 @@ if (
 
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // `npm run record:tour -- --dev` : pas d'indicateur Next.js dans la vidéo.
+  ...(process.env.BOS_HIDE_DEV_INDICATOR === '1' ? { devIndicators: false as const } : {}),
   /* config options here */
 };
 

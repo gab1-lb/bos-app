@@ -47,3 +47,5 @@ next-env.d.ts
 /.next-sb/
 /test-results/
 /.next-prod/
+/.next-tour/
+/.next-tour-dev/

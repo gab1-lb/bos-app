@@ -12,6 +12,7 @@ import { Icon } from '../ui/Icon';
 import { Reveal } from '../ui/Reveal';
 import { Counters } from './Counters';
 import { DealCard } from './DealCard';
+import { TourCard } from './TourCard';
 
 type Data = { items: DealRecord[]; mandate: Mandate; members: Member[]; templates: Template[] };
 
@@ -97,7 +98,7 @@ export function HomeBoard() {
               ))}
             </div>
           )}
-          {/* ─── SLOT Tâche 12b : carte vidéo « Prendre en main BOS » (insérer ici, en bas de l'accueil) ─── */}
+          <Reveal className="mt" index={3 + Math.min(cards.length, 8) + 1}><TourCard /></Reveal>
         </>
       )}
 
