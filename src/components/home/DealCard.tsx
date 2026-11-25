@@ -54,8 +54,6 @@ export function DealCard({ card, deal, members, now, onMessage }: Props) {
     : key === 'info_request' ? (unsent > 1 ? t('{0} questions pas encore envoyées', unsent) : t('Une question pas encore envoyée'))
     : key === 'bote_review' ? t('BOTe rédigé, à transmettre à l’associate')
     : key === 'committee_note' ? t('BOTe validé, note à préparer pour le comité')
-    : key === 'no_go' ? t('Décision à communiquer au banquier conseil')
-    : key === 'go_dd' ? t('Sujets de due diligence à lister')
     : t('Aucune action suggérée pour l’instant');
   const irrOk = irr != null && Number.isFinite(irr) ? irr * 100 >= sc.hurdle : null;
 

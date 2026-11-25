@@ -259,9 +259,9 @@ export function renderTemplate(tpl: Template, ctx: RenderCtx): { subject: string
 }
 
 export function suggestTemplate(meta: DealMeta, waits: Wait[], deal?: Deal): TemplateKey | null {
-  if (waits.some((w) => w.source === 'question' && (w.level === 'late' || w.level === 'overdue'))) return 'reminder';
   if (meta.decision === 'no_go') return 'no_go';
   if (meta.decision === 'go_dd') return 'go_dd';
+  if (waits.some((w) => w.source === 'question' && (w.level === 'late' || w.level === 'overdue'))) return 'reminder';
   if (meta.phase === 'analysis' && deal && (deal.questions || []).some((q) => q.status !== 'Répondue' && !q.sentAt)) return 'info_request';
   if (meta.phase === 'bote_written') return 'bote_review';
   if (meta.phase === 'associate_review' && meta.validatedAt) return 'committee_note';

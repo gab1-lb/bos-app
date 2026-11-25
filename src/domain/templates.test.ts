@@ -100,6 +100,10 @@ describe('suggestTemplate', () => {
     expect(suggestTemplate(mkMeta({ phase: 'decided', decision: 'no_go' }), [])).toBe('no_go');
     expect(suggestTemplate(mkMeta({ phase: 'decided', decision: 'go_dd' }), [])).toBe('go_dd');
   });
+  it('a decided deal suggests its decision message, even with late questions', () => {
+    expect(suggestTemplate(mkMeta({ phase: 'decided', decision: 'no_go' }), [w('late')])).toBe('no_go');
+    expect(suggestTemplate(mkMeta({ phase: 'decided', decision: 'indicative_offer' }), [w('late')])).toBe('reminder');
+  });
 });
 
 describe('mailtoHref', () => {
