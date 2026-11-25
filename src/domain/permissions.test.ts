@@ -74,4 +74,7 @@ describe('can', () => {
     expect(can(m('admin'), 'setOwner', { ...deal('other'), phase: 'associate_review' })).toBe(false);
     expect(can(m('associate'), 'setOwner')).toBe(false);
   });
+  it('an unknown action is refused, even to an admin (fail closed)', () => {
+    expect(can(m('admin'), 'bogus' as Action, deal('me'))).toBe(false);
+  });
 });
