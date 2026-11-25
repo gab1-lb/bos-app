@@ -31,6 +31,8 @@ Le coût de l'offre Pro est d'environ 45 $ par mois en tout (Vercel Pro et Supab
 3. Ouvrez une nouvelle requête (**New query**), puis copiez-y le contenu de `supabase/seed.sql`. **Avant de lancer**, remplacez les deux valeurs entre apostrophes, en gardant les apostrophes :
    - `__ALLOWED_DOMAIN__` par le domaine de votre entreprise, sans @ (par exemple `monentreprise.com`) ;
    - `__ADMIN_EMAIL__` par l'adresse e-mail Google du premier administrateur (par exemple `prenom.nom@monentreprise.com`).
+
+   Les valeurs elles-mêmes ne doivent pas contenir d'apostrophe : une apostrophe dans l'adresse (rare, par exemple `o'neil@…`) termine le texte trop tôt et la requête échoue. Dans ce cas, doublez-la (`o''neil@…`).
 4. Cliquez sur **Run**. Cela enregistre ces deux réglages, le mandat d'investissement par défaut et les 12 modèles d'e-mails (6 en français, 6 en anglais). Aucun dossier n'est créé (voir « Dossier de démonstration » plus bas).
 5. Vérifiez : **Table Editor → app_settings** doit contenir une ligne avec vos deux valeurs.
 
@@ -48,7 +50,15 @@ Ouvrez **Project Settings → API** (parfois **Data API** ou **API Keys** selon 
 ### 4a. Dans Google Cloud Console
 
 1. Créez un projet (sélecteur de projet en haut, **New project**), nommez-le `BOS`.
-2. Ouvrez **APIs & Services → OAuth consent screen** (le menu peut s'appeler **Google Auth Platform → Branding / Audience**). Choisissez le type d'utilisateurs **Internal** si votre entreprise utilise Google Workspace : seuls les comptes de votre organisation pourront alors se connecter. Sinon choisissez **External** (les personnes extérieures au domaine peuvent alors s'authentifier chez Google, mais l'application les refuse ensuite, voir plus bas). Renseignez le nom de l'application (`BOS`), l'e-mail d'assistance et l'e-mail du développeur, puis enregistrez.
+2. Ouvrez **APIs & Services → OAuth consent screen** (le menu peut s'appeler **Google Auth Platform → Branding / Audience**). Renseignez le nom de l'application (`BOS`), l'e-mail d'assistance et l'e-mail du développeur. Choisissez ensuite le type d'utilisateurs (**User type** ou **Audience**) :
+   - **Internal** (seulement si votre entreprise utilise Google Workspace) : seuls les comptes Google de votre organisation peuvent se connecter. Google refuse tous les autres comptes avant même d'arriver à BOS : **les invitations de personnes hors domaine (conseils, partenaires, étape 8) ne fonctionneront pas**. Choisissez Internal uniquement si vous n'inviterez jamais personne d'extérieur.
+   - **External** : nécessaire dès que vous voulez inviter des personnes hors de votre domaine, ou si votre entreprise n'utilise pas Google Workspace. Tout compte Google peut alors s'authentifier chez Google, mais BOS refuse lui-même toute personne qui n'est ni du domaine autorisé ni invitée.
+
+   **Si vous avez choisi External**, l'application est créée en mode **Testing** : seuls les comptes ajoutés comme **Test users** peuvent se connecter, et tous les autres membres de l'équipe voient « Accès bloqué » (« Access blocked »). Faites l'une des deux choses suivantes :
+   - **Publier l'application** (recommandé) : **OAuth consent screen** (ou **Audience**) → **Publishing status** → **Publish app**, puis confirmez. BOS ne demande que les informations de base du compte (nom, adresse e-mail, photo) : ces autorisations ne nécessitent pas de vérification par Google, la publication est immédiate ;
+   - ou, pour un essai seulement, ajouter chaque personne dans **Test users** (100 comptes au maximum), y compris le premier administrateur.
+
+   Enregistrez.
 3. Ouvrez **APIs & Services → Credentials** (ou **Google Auth Platform → Clients**), cliquez sur **Create credentials → OAuth client ID**, type d'application **Web application**, nom `BOS`.
 4. Dans **Authorized redirect URIs**, ajoutez exactement : `https://<project-ref>.supabase.co/auth/v1/callback` (en remplaçant `<project-ref>` par l'identifiant de l'étape 1). Cliquez sur **Create**.
 5. Copiez le **Client ID** et le **Client secret** affichés.
@@ -65,7 +75,7 @@ Les adresses du site (Site URL, Redirect URLs) seront renseignées à l'étape 6
 
 1. Connectez-vous à Vercel avec GitHub. Cliquez sur **Add New… → Project**, puis **Import** à côté du dépôt BOS (autorisez l'accès au dépôt si Vercel le demande).
 2. **Framework Preset** : **Next.js** (détecté automatiquement). Ne changez ni la commande de build ni le dossier de sortie.
-3. Ouvrez **Settings → General → Node.js Version** (après la création du projet, si l'option n'est pas visible à l'import) et choisissez **22.x**. BOS nécessite Node 22 minimum.
+3. **Node.js 22, avant le premier déploiement.** BOS nécessite Node 22 minimum. Si l'écran d'import affiche un réglage **Node.js Version**, choisissez **22.x** avant de cliquer sur **Deploy**. Sinon, rien à faire à ce stade : le fichier `package.json` du dépôt exige Node 22 ou plus (champ `engines`) et Vercel l'applique dès le premier déploiement. Une fois le projet créé, vérifiez dans **Settings → General → Node.js Version** que **22.x** (ou plus) est sélectionné ; si un déploiement a échoué avec un message mentionnant Node, choisissez 22.x puis relancez-le (**Deployments → … → Redeploy**).
 4. Dans **Environment Variables**, ajoutez les trois variables suivantes (modèle : `.env.example`) :
    - `NEXT_PUBLIC_SUPABASE_URL` : le Project URL de l'étape 3 ;
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` : la clé anon de l'étape 3 ;
@@ -90,8 +100,8 @@ Si vous ajoutez plus tard un domaine personnalisé, ajoutez aussi son `/auth/cal
 
 ## 8. Inviter et valider l'équipe
 
-- **Collègues du domaine** : ils se connectent avec leur compte Google et arrivent sur une page d'attente. Dans **Administration**, choisissez leur rôle (administrateur, associé, analyste ou lecteur) et validez-les. Vous pouvez aussi **Refuser** une demande ou **Retirer l'accès** plus tard.
-- **Personnes hors domaine** (conseils, partenaires) : dans **Administration**, section **Inviter une personne**, saisissez leur adresse e-mail Google et un rôle. Dès leur première connexion avec cette adresse, ils sont acceptés avec ce rôle. Sans invitation, une personne hors domaine est refusée.
+- **Collègues du domaine** : ils se connectent avec leur compte Google et arrivent sur une page d'attente. Dans **Administration**, choisissez leur rôle (**Admin**, **Associate**, **Analyste** ou **Lecteur**) et cliquez sur **Approuver**. Vous pouvez aussi **Refuser** une demande ou **Retirer l'accès** plus tard.
+- **Personnes hors domaine** (conseils, partenaires) : dans **Administration**, section **Inviter une personne**, saisissez leur adresse e-mail Google et un rôle. Dès leur première connexion avec cette adresse, ils sont acceptés avec ce rôle. Sans invitation, une personne hors domaine est refusée. Cela suppose un écran de consentement **External** et publié (étape 4a) : avec **Internal**, Google les bloque avant BOS.
 
 Au moins un administrateur actif doit toujours exister : l'application (et la base de données) empêche de retirer ou de refuser le dernier.
 
@@ -116,6 +126,7 @@ Prévoyez environ 45 $ par mois au total (tarifs indicatifs, à vérifier sur le
 ## Limites connues
 
 - **Lecture des PDF et export Excel** : pdf.js (import d'un IM) et SheetJS (export Excel) sont livrés avec l'application et servis par votre site Vercel ; aucun script n'est chargé depuis un site tiers. Le PDF est lu dans le navigateur et n'est envoyé nulle part. Les PDF scannés (images sans texte) ne contiennent pas de texte lisible : copiez-collez alors les extraits utiles dans la fenêtre d'import.
+- **En-têtes de sécurité** : le site interdit d'être affiché dans un cadre d'un autre site et n'autorise le navigateur à contacter que lui-même et votre projet Supabase (Content Security Policy, fixée au moment du déploiement à partir de `NEXT_PUBLIC_SUPABASE_URL`). Si vous changez d'adresse Supabase, relancez un déploiement.
 - **Temps réel** : les mises à jour en direct entre collègues supposent que la publication `supabase_realtime` existe. La migration l'y ajoute si elle existe. Vérifiez dans **Database → Publications** que `supabase_realtime` contient bien les tables `deals` et `activity` ; sinon activez-les (interrupteurs de la ligne `supabase_realtime`). Sans cela, les pages ne se rafraîchissent qu'au rechargement.
 - **Dernier administrateur** : il ne peut être ni rétrogradé, ni refusé, ni remis en attente. Pour changer d'administrateur, nommez d'abord le suivant.
 - **Node 22** : requis par les bibliothèques Supabase. Choisissez Node 22.x dans Vercel (étape 5) ; en local, utilisez Node 22 ou plus.
@@ -127,7 +138,21 @@ La vidéo de prise en main de la page d'accueil est un fichier enregistré dans 
 
 ## En cas de problème
 
-- **« Accès refusé » à la connexion Google** : l'URI de redirection de l'étape 4a est incorrecte (elle doit être exactement celle de Supabase), ou l'écran de consentement est en mode Internal et le compte n'appartient pas à l'organisation.
+- **« Accès refusé » à la connexion Google** (erreur `redirect_uri_mismatch`) : l'URI de redirection de l'étape 4a est incorrecte ; elle doit être exactement celle de Supabase.
+- **Un invité extérieur est bloqué par Google** (« Accès bloqué », « ce compte n'appartient pas à l'organisation ») : l'écran de consentement est en mode **Internal**. Passez-le en **External** puis publiez-le (étape 4a) ; Internal n'accepte que les comptes de votre organisation.
+- **Des collègues sont bloqués par Google** (« Accès bloqué : l'application n'a pas terminé la procédure de validation » / « Access blocked: BOS has not completed the Google verification process ») alors que d'autres se connectent : l'écran de consentement External est resté en mode **Testing** et seuls les **Test users** passent. Cliquez sur **Publish app** (étape 4a), ou ajoutez ces personnes aux Test users.
+- **Le premier administrateur arrive sur la page d'attente ou de refus** : soit le seed a été lancé avec les valeurs `__ALLOWED_DOMAIN__` / `__ADMIN_EMAIL__` non remplacées (ou avec une faute de frappe dans l'adresse), soit l'administrateur s'est connecté avant de lancer le seed. Vérifiez dans **Table Editor → app_settings** : si vous y voyez `__ADMIN_EMAIL__` ou une adresse erronée, ouvrez **SQL Editor → New query**, collez la requête suivante en remplaçant les deux valeurs (même règle : pas d'apostrophe dans les valeurs, ou doublez-la), puis **Run** :
+
+  ```sql
+  insert into public.app_settings (id, allowed_domain, bootstrap_admin_email)
+  values (1, 'monentreprise.com', 'prenom.nom@monentreprise.com')
+  on conflict (id) do update set allowed_domain = excluded.allowed_domain,
+                                 bootstrap_admin_email = excluded.bootstrap_admin_email;
+  update public.members set role = 'admin', status = 'active'
+  where email = lower('prenom.nom@monentreprise.com');
+  ```
+
+  La première instruction corrige les réglages (ou les crée si le seed n'a jamais été lancé : lancez-le ensuite pour les modèles d'e-mails et le mandat, en y mettant les mêmes valeurs). La seconde rend actif et administrateur le compte déjà connecté. Rechargez ensuite BOS. Si les modèles d'e-mails manquent (**Table Editor → templates** vide), le seed n'a pas été lancé : lancez-le (étape 2).
 - **Retour sur la page de connexion en boucle** : vérifiez Site URL et Redirect URLs (étape 6).
 - **Page blanche ou erreur à l'ouverture** : vérifiez les trois variables d'environnement Vercel, puis redéployez.
 - **Le site ne répond plus après une période d'inactivité** (offre gratuite Supabase) : dans le tableau de bord Supabase, cliquez sur **Restore project**.
