@@ -8,18 +8,19 @@ import { Icon } from '../ui/Icon';
 import { Reveal } from '../ui/Reveal';
 import { Gauges } from '../valuation/Gauges';
 import { gaugeLabels } from './compute';
-import { useBind, useProject } from './ProjectContext';
+import { newItemId } from '../../domain/dealShape';
+import { useBind, useBindItem, useProject } from './ProjectContext';
 
 export function Valorisation() {
-  const { deal: d, c, patch, editable } = useProject();
+  const { deal: d, c, editable, appendItems, removeItem } = useProject();
   const bind = useBind();
+  const bindC = useBindItem();
   const f = useI18n();
   const { t, nf, pc, mx, meur, unitM } = f;
   const { b, cp, dc, mp, ret } = c;
   const UM = unitM();
   const w = N(d.dcf.wacc), g = N(d.dcf.g);
-  const comps = d.comps || [];
-  const setComps = (next: Comp[]) => patch(['comps'], next);
+  const newComp = (): Comp => ({ id: newItemId(), target: '', buyer: '', year: new Date().getFullYear(), geo: '', niche: '', rev: null, ebitda: null, ev: null, include: true });
   const points: [string, number | null | undefined][] = [
     [t('Prix demandé'), b.ask],
     [t('Médiane des transactions'), cp.evEbitda.med != null && b.adjEbitda != null ? cp.evEbitda.med * b.adjEbitda : null],
@@ -45,7 +46,7 @@ export function Valorisation() {
 
       <Reveal index={1}>
         <Card className="mt" title={t('Transactions comparables')} icon="list"
-          right={editable ? <button type="button" className="btn sm" onClick={() => setComps([...comps, { target: '', buyer: '', year: new Date().getFullYear(), geo: '', niche: '', rev: null, ebitda: null, ev: null, include: true }])}><Icon name="plus" />{t('Ajouter')}</button> : null}>
+          right={editable ? <button type="button" className="btn sm" onClick={() => appendItems('comps', [newComp()])}><Icon name="plus" />{t('Ajouter')}</button> : null}>
           <div className="tw">
             <table>
               <thead>
@@ -55,22 +56,25 @@ export function Valorisation() {
                 </tr>
               </thead>
               <tbody>
-                {cp.rows.map((r, i) => (
-                  <tr key={i} className={r.include ? '' : 'off'}>
-                    <td><Check {...bind(['comps', i, 'include'], t('Retenir'))} checked={r.include} /></td>
-                    <td><TextInput {...bind(['comps', i, 'target'], t('Cible'))} value={r.target} /></td>
-                    <td><TextInput {...bind(['comps', i, 'buyer'], t('Acquéreur'))} value={r.buyer} /></td>
-                    <td className="n"><NumInput {...bind(['comps', i, 'year'], t('Année'))} value={r.year} raw className="w-s" /></td>
-                    <td><TextInput {...bind(['comps', i, 'geo'], t('Zone'))} value={r.geo} /></td>
-                    <td><TextInput {...bind(['comps', i, 'niche'], t('Niche'))} value={r.niche} /></td>
-                    <td className="n"><NumInput {...bind(['comps', i, 'rev'], t('CA'))} value={r.rev} className="w-s" /></td>
-                    <td className="n"><NumInput {...bind(['comps', i, 'ebitda'], 'EBITDA')} value={r.ebitda} className="w-s" /></td>
-                    <td className="n"><NumInput {...bind(['comps', i, 'ev'], t('VE'))} value={r.ev} className="w-s" /></td>
-                    <td className="n">{r.evRev == null ? '—' : mx(r.evRev)}</td>
-                    <td className="n">{r.evEbitda == null ? '—' : mx(r.evEbitda)}</td>
-                    <td>{editable && <button type="button" className="iconbtn" aria-label={t('Supprimer')} onClick={() => setComps(comps.filter((_, j) => j !== i))}><Icon name="x" /></button>}</td>
-                  </tr>
-                ))}
+                {cp.rows.map((r, i) => {
+                  const f = (field: string, label: string) => bindC('comps', i, r.id, field, label);
+                  return (
+                    <tr key={r.id} className={r.include ? '' : 'off'}>
+                      <td><Check {...f('include', t('Retenir'))} checked={r.include} /></td>
+                      <td><TextInput {...f('target', t('Cible'))} value={r.target} /></td>
+                      <td><TextInput {...f('buyer', t('Acquéreur'))} value={r.buyer} /></td>
+                      <td className="n"><NumInput {...f('year', t('Année'))} value={r.year} raw className="w-s" /></td>
+                      <td><TextInput {...f('geo', t('Zone'))} value={r.geo} /></td>
+                      <td><TextInput {...f('niche', t('Niche'))} value={r.niche} /></td>
+                      <td className="n"><NumInput {...f('rev', t('CA'))} value={r.rev} className="w-s" /></td>
+                      <td className="n"><NumInput {...f('ebitda', 'EBITDA')} value={r.ebitda} className="w-s" /></td>
+                      <td className="n"><NumInput {...f('ev', t('VE'))} value={r.ev} className="w-s" /></td>
+                      <td className="n">{r.evRev == null ? '—' : mx(r.evRev)}</td>
+                      <td className="n">{r.evEbitda == null ? '—' : mx(r.evEbitda)}</td>
+                      <td>{editable && <button type="button" className="iconbtn" aria-label={t('Supprimer')} onClick={() => removeItem('comps', r.id)}><Icon name="x" /></button>}</td>
+                    </tr>
+                  );
+                })}
                 {([['1er quartile', 'q1'], ['Médiane', 'med'], ['3e quartile', 'q3']] as const).map(([l, k]) => (
                   <tr key={k} className={k === 'med' ? 'tot' : 'sub'}>
                     <td /><td colSpan={8}>{t(l)}</td>

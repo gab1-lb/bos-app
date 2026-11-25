@@ -164,6 +164,7 @@ select test.ok(not public.has_role(array['admin','associate','analyst','reader']
 select test.throws($$select public.create_deal('{"name":"x"}')$$, '42501', 'pending: create_deal refused');
 select test.throws(format('select public.patch_deal(%L, %L, %L)', :'d1', '{name}', '"x"'), '42501', 'pending: patch_deal refused');
 select test.throws($$select public.set_my_locale('en')$$, '42501', 'pending: set_my_locale refused');
+select test.throws(format('select public.deal_list_append(%L, %L, %L)', :'d1', 'questions', '{"id":"p"}'), '42501', 'pending: deal_list_append refused');
 
 select test.as_user('00000000-0000-0000-0000-0000000000f1');
 select test.ok((select count(*) = 0 from public.deals), 'denied: no deals visible');
@@ -189,6 +190,9 @@ select test.throws(format('select public.patch_deal(%L, %L, %L)', :'d1', '{name}
 select test.throws($$select public.create_deal('{"name":"x"}')$$, '42501', 'reader: create_deal refused');
 select test.throws(format('select public.set_phase(%L, %L)', :'d1', 'analysis'), '42501', 'reader: set_phase refused');
 select test.throws(format('select public.set_committee_date(%L, %L)', :'d1', '2026-12-01'), '42501', 'reader: set_committee_date refused');
+select test.throws(format('select public.deal_list_append(%L, %L, %L)', :'d1', 'questions', '{"id":"r"}'), '42501', 'reader: deal_list_append refused');
+select test.throws(format('select public.deal_list_remove(%L, %L, %L)', :'d1', 'questions', 'r'), '42501', 'reader: deal_list_remove refused');
+select test.throws(format('select public.deal_list_update(%L, %L, %L, %L)', :'d1', 'questions', 'r', '{"q":"x"}'), '42501', 'reader: deal_list_update refused');
 select public.set_my_locale('en');
 select test.ok((select locale = 'en' from public.current_member()), 'reader: set_my_locale(en) ok');
 select test.throws($$select public.set_my_locale('de')$$, '22023', 'set_my_locale: unknown locale rejected');
@@ -233,6 +237,62 @@ select test.ok((select contributor_ids = array['00000000-0000-0000-0000-00000000
                'analyst: set_contributors ok');
 select test.throws(format('select public.set_contributors(%L, %L)', :'d1', '{00000000-0000-0000-0000-00000000ffff}'), '22023',
                    'set_contributors: unknown member rejected');
+
+-- list items by id (questions / adjustments / comps): no lost update, no write to the wrong row
+select public.deal_list_append(:'d1', 'questions', '{"id":"qa","q":"A","answer":""}');
+select public.deal_list_append(:'d1', 'questions', '{"id":"qb","q":"B","answer":""}');
+select public.deal_list_append(:'d1', 'questions', '{"id":"qc","q":"C","answer":""}');
+select test.ok((select jsonb_array_length(data->'questions') = 3 and data->'questions'->2->>'id' = 'qc' from public.deals where id = :'d1'),
+               'deal_list_append: creates the list and appends in order');
+select test.ok((select count(*) = 3 from public.activity where deal_id = :'d1' and kind = 'list_add' and path = 'questions'
+                and actor_id = '00000000-0000-0000-0000-0000000000b2'), 'deal_list_append: one activity row per item');
+-- B answers question C by id, then A deletes question A (positions shift): C keeps its answer, B is untouched
+select public.deal_list_update(:'d1', 'questions', 'qc', '{"answer":"yes"}');
+select public.deal_list_remove(:'d1', 'questions', 'qa');
+select test.ok((select data->'questions' = '[{"id":"qb","q":"B","answer":""},{"id":"qc","q":"C","answer":"yes"}]'::jsonb
+                from public.deals where id = :'d1'), 'deal_list_remove: removes by id, other rows and their edits kept');
+-- a later edit by id still reaches question C at its new position
+select public.deal_list_update(:'d1', 'questions', 'qc', '{"answer":"later","sentAt":"2026-11-01","status":"Envoyée"}');
+select test.ok((select data->'questions'->1 = '{"id":"qc","q":"C","answer":"later","sentAt":"2026-11-01","status":"Envoyée"}'::jsonb
+                and data->'questions'->0 = '{"id":"qb","q":"B","answer":""}'::jsonb
+                from public.deals where id = :'d1'), 'deal_list_update: by id after a removal, several fields at once');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d1' and kind = 'patch' and path = 'questions.1.answer'
+                and old_value = '"yes"'::jsonb and new_value = '"later"'::jsonb), 'deal_list_update: activity per field with old and new value');
+select test.ok((select count(*) = 3 from public.activity where deal_id = :'d1' and kind = 'patch' and path like 'questions.1.%'
+                and new_value <> '"yes"'::jsonb), 'deal_list_update: one row per changed field');
+select public.deal_list_update(:'d1', 'questions', 'qc', '{"answer":"later"}');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d1' and path = 'questions.1.answer' and new_value = '"later"'::jsonb),
+               'deal_list_update: unchanged value not logged again');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d1' and kind = 'list_remove' and path = 'questions'
+                and old_value->>'id' = 'qa' and new_value is null), 'deal_list_remove: activity row keeps the removed item');
+select public.deal_list_remove(:'d1', 'questions', 'qa');
+select test.ok((select count(*) = 1 from public.activity where deal_id = :'d1' and kind = 'list_remove'),
+               'deal_list_remove: an item already removed is a no-op');
+select test.throws(format('select public.deal_list_update(%L, %L, %L, %L)', :'d1', 'questions', 'qa', '{"answer":"x"}'), 'P0002',
+                   'deal_list_update: removed item -> not found (never another row)');
+select test.throws(format('select public.deal_list_append(%L, %L, %L)', :'d1', 'questions', '{"id":"qb","q":"dup"}'), '22023',
+                   'deal_list_append: duplicate id rejected');
+select test.throws(format('select public.deal_list_append(%L, %L, %L)', :'d1', 'questions', '{"q":"no id"}'), '22023',
+                   'deal_list_append: item without id rejected');
+select test.throws(format('select public.deal_list_append(%L, %L, %L)', :'d1', 'questions', '[1]'), '22023',
+                   'deal_list_append: non-object item rejected');
+select test.throws(format('select public.deal_list_update(%L, %L, %L, %L)', :'d1', 'questions', 'qb', '{"id":"zz"}'), '22023',
+                   'deal_list_update: id is immutable');
+select test.throws(format('select public.deal_list_update(%L, %L, %L, %L)', :'d1', 'questions', 'qb', '{}'), '22023',
+                   'deal_list_update: empty fields rejected');
+select test.throws(format('select public.deal_list_append(%L, %L, %L)', :'d1', 'name', '{"id":"x"}'), '22023',
+                   'deal_list_append: unknown list rejected');
+select test.throws(format('select public.deal_list_append(%L, %L, %L)', '00000000-0000-0000-0000-00000000dead', 'questions', '{"id":"x"}'), 'P0002',
+                   'deal_list_append: unknown deal -> not found');
+select public.deal_list_append(:'d1', 'adjustments', '{"id":"a1","label":"L","amount":1}');
+select public.deal_list_append(:'d1', 'comps', '{"id":"c1","target":"T","include":true}');
+select public.deal_list_update(:'d1', 'comps', 'c1', '{"include":false}');
+select test.ok((select data->'adjustments'->0->>'id' = 'a1' and data->'comps'->0->>'include' = 'false'
+                from public.deals where id = :'d1'), 'adjustments and comps: append and update by id');
+select public.patch_deal(:'d2', '{questions}', '"oops"');
+select test.throws(format('select public.deal_list_append(%L, %L, %L)', :'d2', 'questions', '{"id":"x"}'), '22023',
+                   'deal_list_append: a list that is not an array is rejected');
+select public.patch_deal(:'d2', '{questions}', '[]');
 
 -- direct writes are refused
 select test.throws($$insert into public.deals (data) values ('{"name":"Direct"}')$$, '42501', 'analyst: direct insert into deals refused');

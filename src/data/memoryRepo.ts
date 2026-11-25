@@ -4,6 +4,7 @@ import { PHASES, type Decision, type DealMeta, type Phase } from '../domain/phas
 import { can, type Action, type Member, type Role } from '../domain/permissions';
 import { DEFAULT_TEMPLATES, type Template } from '../domain/templates';
 import type { Locale } from '../i18n/format';
+import { LISTS, normalizeDeal, type ListName } from '../domain/dealShape';
 import { admin, PERSONAS } from './personas';
 import { RepoError, type ActivityEntry, type DealRecord, type Repo } from './repo';
 
@@ -49,6 +50,17 @@ export function createMemoryRepo(opts: MemoryRepoOptions = {}): MemoryRepo {
   };
   const touch = (rec: DealRecord) => { rec.meta.updatedAt = iso(); rec.meta.updatedBy = cur().id; };
   const newId = () => `mem-${++idSeq}`;
+  type Item = Record<string, unknown> & { id?: unknown };
+  const listOf = (rec: DealRecord, list: ListName): Item[] => {
+    if (!LISTS.includes(list)) throw new RepoError('invalid', `unknown list ${list}`);
+    const v = (rec.deal as unknown as Record<string, unknown>)[list];
+    if (v == null) return [];
+    if (!Array.isArray(v)) throw new RepoError('invalid', `data.${list} is not a list`);
+    return v as Item[];
+  };
+  const setList = (rec: DealRecord, list: ListName, items: Item[]) => {
+    (rec.deal as unknown as Record<string, unknown>)[list] = items;
+  };
   const activeMember = (id: string, roles?: Role[]) => {
     const m = memberList.find((x) => x.id === id);
     return !!m && m.status === 'active' && (!roles || (!!m.role && roles.includes(m.role)));
@@ -69,7 +81,8 @@ export function createMemoryRepo(opts: MemoryRepoOptions = {}): MemoryRepo {
 
   const insert = (deal: Deal, meta: Omit<DealMeta, 'id'>, kind: string, details: unknown): string => {
     const id = newId();
-    deals.set(id, { deal: { ...clone(deal), id }, meta: { ...clone(meta), id } });
+    // Like supabaseRepo: list items get their ids before the deal is stored.
+    deals.set(id, { deal: { ...normalizeDeal(clone(deal)).deal, id }, meta: { ...clone(meta), id } });
     record(id, kind, null, null, details);
     notify(id);
     return id;
@@ -137,6 +150,54 @@ export function createMemoryRepo(opts: MemoryRepoOptions = {}): MemoryRepo {
       p[last] = clone(value === undefined ? null : value);
       touch(rec);
       record(id, 'patch', path.join('.'), old, value);
+      notify(id);
+    },
+    async appendItem(id, list, item) {
+      ok('edit');
+      const arr = listOf(lock(id), list);
+      const itemId = (item as { id?: unknown } | null)?.id;
+      if (typeof item !== 'object' || item === null || Array.isArray(item) || typeof itemId !== 'string' || !itemId) {
+        throw new RepoError('invalid', 'item must be an object with a non-empty string id');
+      }
+      if (arr.some((x) => x.id === itemId)) throw new RepoError('invalid', `item ${itemId} already in ${list}`);
+      const rec = lock(id);
+      setList(rec, list, [...arr, clone(item) as unknown as Item]);
+      touch(rec);
+      record(id, 'list_add', list, null, item);
+      notify(id);
+    },
+    async removeItem(id, list, itemId) {
+      ok('edit');
+      const rec = lock(id);
+      const arr = listOf(rec, list);
+      const idx = arr.findIndex((x) => x.id === itemId);
+      if (idx < 0) return;
+      setList(rec, list, arr.filter((_, i) => i !== idx));
+      touch(rec);
+      record(id, 'list_remove', list, arr[idx], null);
+      notify(id);
+    },
+    async updateItem(id, list, itemId, fields) {
+      ok('edit');
+      if (typeof fields !== 'object' || fields === null || Array.isArray(fields) || Object.keys(fields).length === 0) {
+        throw new RepoError('invalid', 'fields must be a non-empty object');
+      }
+      if (Object.hasOwn(fields, 'id')) throw new RepoError('invalid', 'item id is immutable');
+      const rec = lock(id);
+      const arr = listOf(rec, list);
+      const idx = arr.findIndex((x) => x.id === itemId);
+      if (idx < 0) throw new RepoError('not_found', `item ${itemId} not found in ${list}`);
+      const item = arr[idx];
+      let changed = false;
+      for (const [k, v] of Object.entries(fields)) {
+        const next = v === undefined ? null : v;
+        if (JSON.stringify(item[k] ?? null) === JSON.stringify(next) && Object.hasOwn(item, k)) continue;
+        record(id, 'patch', `${list}.${idx}.${k}`, item[k], next);
+        item[k] = clone(next);
+        changed = true;
+      }
+      if (!changed) return;
+      touch(rec);
       notify(id);
     },
     async setPhase(id, phase) {

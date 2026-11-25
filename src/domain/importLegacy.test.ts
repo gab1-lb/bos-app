@@ -51,6 +51,13 @@ describe('importLegacy', () => {
     expect(d.plan.taxRate).toBe(25);
     expect(d.questions[0]).toMatchObject({ awaitedFrom: null, sentAt: null, answeredAt: null });
   });
+  it('gives legacy questions, adjustments and comps stable ids', () => {
+    const r = importLegacy(wrap({ id: 'z', name: 'Z', questions: [{ q: 'a' }, { q: 'b' }], adjustments: [{ label: 'l' }], comps: [{ target: 't' }] }), me, NOW);
+    const d = r.items[0].deal;
+    expect(new Set(d.questions.map((q) => q.id)).size).toBe(2);
+    expect(d.adjustments[0].id).toBeTruthy();
+    expect(d.comps[0].id).toBeTruthy();
+  });
   it('hardens against malformed deals', () => {
     const bad = { name: 'bad' };
     Object.defineProperty(bad, 'hist', { enumerable: true, get() { throw new Error('boom'); } });

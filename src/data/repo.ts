@@ -3,8 +3,14 @@ import type { Decision, DealMeta, Phase } from '../domain/phases';
 import type { Member, Role } from '../domain/permissions';
 import type { Template } from '../domain/templates';
 import type { Locale } from '../i18n/format';
+import type { ListItem, ListName } from '../domain/dealShape';
 
-export type DealRecord = { deal: Deal; meta: DealMeta };
+export type DealRecord = {
+  deal: Deal;
+  meta: DealMeta;
+  /** Lists whose item ids were generated when the deal was read (older data): not stored yet. */
+  unsavedIds?: ListName[];
+};
 
 export type ActivityEntry = {
   id: number;
@@ -35,6 +41,12 @@ export interface Repo {
   createDeal(deal: Deal): Promise<string>;
   importDeal(deal: Deal, meta: Omit<DealMeta, 'id'>): Promise<string>;
   patchDeal(id: string, path: string[], value: unknown): Promise<void>;
+  /** Adds an item (with its client-generated id) at the end of a deal list. */
+  appendItem<L extends ListName>(id: string, list: L, item: ListItem<L>): Promise<void>;
+  /** Removes the item with this id; no-op when it is already gone. */
+  removeItem(id: string, list: ListName, itemId: string): Promise<void>;
+  /** Sets fields of the item with this id (not `id` itself); not_found when the item is gone. */
+  updateItem(id: string, list: ListName, itemId: string, fields: Record<string, unknown>): Promise<void>;
   setPhase(id: string, p: Phase): Promise<void>;
   validateBote(id: string): Promise<void>;
   decide(id: string, d: Decision): Promise<void>;

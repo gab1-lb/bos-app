@@ -3,7 +3,7 @@ import type { Question } from '../../engine/types';
 import { withAnswered, withSent } from './compute';
 
 const q = (o: Partial<Question> = {}): Question => ({
-  q: 'x', cat: 'Financier', priority: 'Normale', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...o,
+  id: 'q1', q: 'x', cat: 'Financier', priority: 'Normale', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...o,
 });
 
 describe('question dates', () => {

@@ -1,10 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Deal, Mandate } from '../engine/types';
+import type { Mandate } from '../engine/types';
 import { DEFAULT_MANDATE } from '../engine/samples';
 import type { Decision, DealMeta, Phase } from '../domain/phases';
 import type { Member, Role } from '../domain/permissions';
 import type { Template } from '../domain/templates';
 import type { Locale } from '../i18n/format';
+import { normalizeDeal } from '../domain/dealShape';
 import { RepoError, type ActivityEntry, type DealRecord, type Repo } from './repo';
 
 /* ---------- pure mapping helpers (unit-tested) ---------- */
@@ -42,9 +43,12 @@ export type DealRow = {
   updated_by: string | null;
 };
 
+/** Row → record. The deal is normalised (sections, arrays, item ids) so one malformed row cannot break a screen. */
 export function rowToDealRecord(row: DealRow): DealRecord {
+  const { deal, idsAdded } = normalizeDeal({ ...row.data, id: row.id });
   return {
-    deal: { ...row.data, id: row.id } as unknown as Deal,
+    deal,
+    ...(idsAdded.length ? { unsavedIds: idsAdded } : {}),
     meta: {
       id: row.id,
       ownerId: row.owner_id ?? '',
@@ -117,9 +121,13 @@ export function createSupabaseRepo(client: SupabaseClient): Repo {
       return ((data ?? []) as DealRow[]).map(rowToDealRecord);
     },
     getDeal: one,
-    createDeal: (deal) => rpc<string>('create_deal', { p_data: deal }),
-    importDeal: (deal, meta) => rpc<string>('import_deal', { p_data: deal, p_meta: metaToImportJson(meta) }),
+    // Item ids are generated client-side, before the deal is stored.
+    createDeal: (deal) => rpc<string>('create_deal', { p_data: normalizeDeal(deal).deal }),
+    importDeal: (deal, meta) => rpc<string>('import_deal', { p_data: normalizeDeal(deal).deal, p_meta: metaToImportJson(meta) }),
     patchDeal: (id, path, value) => rpc('patch_deal', { p_id: id, p_path: path, p_value: value === undefined ? null : value }),
+    appendItem: (id, list, item) => rpc('deal_list_append', { p_id: id, p_list: list, p_item: item }),
+    removeItem: (id, list, itemId) => rpc('deal_list_remove', { p_id: id, p_list: list, p_item_id: itemId }),
+    updateItem: (id, list, itemId, fields) => rpc('deal_list_update', { p_id: id, p_list: list, p_item_id: itemId, p_fields: fields }),
     setPhase: (id, p) => rpc('set_phase', { p_id: id, p_phase: p }),
     validateBote: (id) => rpc('validate_bote', { p_id: id }),
     decide: (id, d) => rpc('decide', { p_id: id, p_decision: d }),

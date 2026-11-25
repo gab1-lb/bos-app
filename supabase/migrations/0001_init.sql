@@ -215,6 +215,118 @@ begin
   perform public._log(p_id, 'patch', array_to_string(p_path, '.'), d.data #> p_path, v_value);
 end $$;
 
+-- ---------------------------------------------------------------- list items by id
+-- data.questions, data.adjustments and data.comps are arrays of objects with a stable string `id`
+-- (generated client-side). Rows are added, removed and edited by id, server-side under the row lock,
+-- so concurrent edits by two people never overwrite each other or land on the wrong row.
+-- Same rights and activity log as patch_deal (analyst, associate, admin).
+
+-- Internal: the list p_list of a deal's data ([] when absent). Raises 22023 for an unknown list or a
+-- value that is not an array.
+create function public._deal_list(p_data jsonb, p_list text) returns jsonb
+language plpgsql immutable set search_path = public as $$
+declare v jsonb;
+begin
+  if p_list is null or p_list not in ('questions', 'adjustments', 'comps') then
+    raise exception 'unknown list %', p_list using errcode = '22023';
+  end if;
+  v := coalesce(p_data -> p_list, 'null'::jsonb);
+  if jsonb_typeof(v) = 'null' then return '[]'::jsonb; end if;
+  if jsonb_typeof(v) <> 'array' then
+    raise exception 'data.% is not a list', p_list using errcode = '22023';
+  end if;
+  return v;
+end $$;
+
+-- Internal: 0-based position of the item whose id is p_item_id, or null.
+create function public._deal_list_index(p_arr jsonb, p_item_id text) returns int
+language sql immutable set search_path = public as $$
+  select (e.ord - 1)::int from jsonb_array_elements(p_arr) with ordinality as e(item, ord)
+  where jsonb_typeof(e.item) = 'object' and e.item ->> 'id' = p_item_id
+  order by e.ord limit 1;
+$$;
+
+-- deal_list_append: adds p_item (an object with a non-empty string id, unique in the list) at the end.
+create function public.deal_list_append(p_id uuid, p_list text, p_item jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  d public.deals;
+  v_arr jsonb;
+begin
+  perform public._require(array['admin', 'associate', 'analyst']);
+  if p_item is null or jsonb_typeof(p_item) <> 'object'
+     or jsonb_typeof(p_item -> 'id') is distinct from 'string' or p_item ->> 'id' = '' then
+    raise exception 'item must be an object with a non-empty string id' using errcode = '22023';
+  end if;
+  d := public._lock_deal(p_id);
+  v_arr := public._deal_list(d.data, p_list);
+  if public._deal_list_index(v_arr, p_item ->> 'id') is not null then
+    raise exception 'item % already in %', p_item ->> 'id', p_list using errcode = '22023';
+  end if;
+  update public.deals set data = jsonb_set(data, array[p_list], v_arr || jsonb_build_array(p_item), true),
+    updated_at = now(), updated_by = auth.uid()
+  where id = p_id;
+  perform public._log(p_id, 'list_add', p_list, null, p_item);
+end $$;
+
+-- deal_list_remove: removes the item with id p_item_id. Already gone (removed by someone else): no-op.
+create function public.deal_list_remove(p_id uuid, p_list text, p_item_id text) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  d public.deals;
+  v_arr jsonb;
+  v_idx int;
+begin
+  perform public._require(array['admin', 'associate', 'analyst']);
+  d := public._lock_deal(p_id);
+  v_arr := public._deal_list(d.data, p_list);
+  v_idx := public._deal_list_index(v_arr, p_item_id);
+  if v_idx is null then return; end if;
+  update public.deals set data = jsonb_set(data, array[p_list], v_arr - v_idx, true),
+    updated_at = now(), updated_by = auth.uid()
+  where id = p_id;
+  perform public._log(p_id, 'list_remove', p_list, v_arr -> v_idx, null);
+end $$;
+
+-- deal_list_update: merges p_fields (top-level fields, never `id`) into the item with id p_item_id.
+-- One activity row per changed field, path '<list>.<position>.<field>'. Unknown item: P0002.
+create function public.deal_list_update(p_id uuid, p_list text, p_item_id text, p_fields jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  d public.deals;
+  v_arr jsonb;
+  v_idx int;
+  v_item jsonb;
+  v_key text;
+  v_val jsonb;
+  v_changed boolean := false;
+begin
+  perform public._require(array['admin', 'associate', 'analyst']);
+  if p_fields is null or jsonb_typeof(p_fields) <> 'object' or p_fields = '{}'::jsonb then
+    raise exception 'fields must be a non-empty object' using errcode = '22023';
+  end if;
+  if p_fields ? 'id' then
+    raise exception 'item id is immutable' using errcode = '22023';
+  end if;
+  d := public._lock_deal(p_id);
+  v_arr := public._deal_list(d.data, p_list);
+  v_idx := public._deal_list_index(v_arr, p_item_id);
+  if v_idx is null then
+    raise exception 'item % not found in %', p_item_id, p_list using errcode = 'P0002';
+  end if;
+  v_item := v_arr -> v_idx;
+  for v_key, v_val in select key, value from jsonb_each(p_fields) loop
+    if (v_item -> v_key) is distinct from v_val then
+      perform public._log(p_id, 'patch', p_list || '.' || v_idx || '.' || v_key, v_item -> v_key, v_val);
+      v_changed := true;
+    end if;
+  end loop;
+  if not v_changed then return; end if;
+  update public.deals set data = jsonb_set(data, array[p_list, v_idx::text], v_item || p_fields, false),
+    updated_at = now(), updated_by = auth.uid()
+  where id = p_id;
+end $$;
+
 -- set_phase: associate/admin to any phase except 'decided' (use decide());
 -- analyst only from and to im_received / analysis / bote_written.
 create function public.set_phase(p_id uuid, p_phase text) returns void
@@ -589,6 +701,9 @@ grant execute on function
   public.create_deal(jsonb),
   public.import_deal(jsonb, jsonb),
   public.patch_deal(uuid, text[], jsonb),
+  public.deal_list_append(uuid, text, jsonb),
+  public.deal_list_remove(uuid, text, text),
+  public.deal_list_update(uuid, text, text, jsonb),
   public.set_phase(uuid, text),
   public.validate_bote(uuid),
   public.decide(uuid, text),

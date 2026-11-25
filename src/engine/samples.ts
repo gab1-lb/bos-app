@@ -31,8 +31,9 @@ export function blankDeal(name?: string): Deal {
 
 export function demoDeal(): Deal {
   const d = blankDeal('Projet Hélios');
+  let n = 0;
   const q = (text: string, cat: string, priority: string, status: string): Deal['questions'][number] => ({
-    q: text, cat, priority, status, answer: '', awaitedFrom: null, sentAt: null, answeredAt: null,
+    id: `helios-q${++n}`, q: text, cat, priority, status, answer: '', awaitedFrom: null, sentAt: null, answeredAt: null,
   });
   Object.assign(d, {
     id: 'demo-helios', example: true, sector: 'Logiciel vertical B2B (SaaS)', country: 'France', stage: 'Offre indicative',
@@ -44,17 +45,17 @@ export function demoDeal(): Deal {
     askPrice: 42,
     refs: { rev: 'IM p. 2', ebitda: 'IM p. 2', arr: 'IM p. 3', recurring: 'IM p. 3', churn: 'IM p. 3', netDebt: 'IM p. 14', askPrice: 'Lettre de process' },
     adjustments: [
-      { label: 'Rémunération du dirigeant ramenée au marché', amount: 0.15, included: true, status: 'À confirmer' },
-      { label: 'Honoraires de cession non récurrents', amount: 0.2, included: false, status: 'Accepté' },
-      { label: 'R&D capitalisée réintégrée en charges', amount: -0.25, included: false, status: 'Accepté' },
+      { id: 'helios-adj1', label: 'Rémunération du dirigeant ramenée au marché', amount: 0.15, included: true, status: 'À confirmer' },
+      { id: 'helios-adj2', label: 'Honoraires de cession non récurrents', amount: 0.2, included: false, status: 'Accepté' },
+      { id: 'helios-adj3', label: 'R&D capitalisée réintégrée en charges', amount: -0.25, included: false, status: 'Accepté' },
     ],
     comps: [
-      { target: 'Cible A (illustratif)', buyer: 'Consolidateur VMS', year: 2025, geo: 'France', niche: 'Logiciel cabinets comptables', rev: 9, ebitda: 2.3, ev: 27, include: true },
-      { target: 'Cible B (illustratif)', buyer: 'Industriel coté', year: 2024, geo: 'Benelux', niche: 'ERP PME', rev: 22, ebitda: 5.1, ev: 84, include: true },
-      { target: 'Cible C (illustratif)', buyer: 'Fonds LBO', year: 2024, geo: 'France', niche: 'Paie et RH', rev: 15, ebitda: 3.9, ev: 62, include: true },
-      { target: 'Cible D (illustratif)', buyer: 'Consolidateur VMS', year: 2023, geo: 'Allemagne', niche: 'Gestion d’officines', rev: 6, ebitda: 1.4, ev: 15, include: true },
-      { target: 'Cible E (illustratif)', buyer: 'Industriel', year: 2025, geo: 'Espagne', niche: 'Logiciel juridique', rev: 11, ebitda: 2.6, ev: 35, include: true },
-      { target: 'Cible F (illustratif)', buyer: 'Fonds LBO', year: 2022, geo: 'Royaume-Uni', niche: 'Fiscalité', rev: 40, ebitda: 11, ev: 210, include: false },
+      { id: 'helios-comp-a', target: 'Cible A (illustratif)', buyer: 'Consolidateur VMS', year: 2025, geo: 'France', niche: 'Logiciel cabinets comptables', rev: 9, ebitda: 2.3, ev: 27, include: true },
+      { id: 'helios-comp-b', target: 'Cible B (illustratif)', buyer: 'Industriel coté', year: 2024, geo: 'Benelux', niche: 'ERP PME', rev: 22, ebitda: 5.1, ev: 84, include: true },
+      { id: 'helios-comp-c', target: 'Cible C (illustratif)', buyer: 'Fonds LBO', year: 2024, geo: 'France', niche: 'Paie et RH', rev: 15, ebitda: 3.9, ev: 62, include: true },
+      { id: 'helios-comp-d', target: 'Cible D (illustratif)', buyer: 'Consolidateur VMS', year: 2023, geo: 'Allemagne', niche: 'Gestion d’officines', rev: 6, ebitda: 1.4, ev: 15, include: true },
+      { id: 'helios-comp-e', target: 'Cible E (illustratif)', buyer: 'Industriel', year: 2025, geo: 'Espagne', niche: 'Logiciel juridique', rev: 11, ebitda: 2.6, ev: 35, include: true },
+      { id: 'helios-comp-f', target: 'Cible F (illustratif)', buyer: 'Fonds LBO', year: 2022, geo: 'Royaume-Uni', niche: 'Fiscalité', rev: 40, ebitda: 11, ev: 210, include: false },
     ],
     plan: { growth: [14, 12, 10, 9, 8], targetMargin: 28, capexPct: 4.5, daPct: 4, nwcPct: -8, taxRate: 25, longGrowth: 4 },
     dcf: { wacc: 11, g: 2.5 },

@@ -18,6 +18,8 @@ export interface Kpi {
 }
 
 export interface Adjustment {
+  /** Stable item id (unique within the deal list); rows are written by id, never by position. */
+  id: string;
   label: string;
   amount: number | null;
   included: boolean;
@@ -25,6 +27,8 @@ export interface Adjustment {
 }
 
 export interface Comp {
+  /** Stable item id (unique within the deal list). */
+  id: string;
   target: string;
   buyer: string;
   year: number;
@@ -37,6 +41,8 @@ export interface Comp {
 }
 
 export interface Question {
+  /** Stable item id (unique within the deal list). */
+  id: string;
   q: string;
   cat: string;
   priority: string; // 'Décisive' | 'Importante' | ...

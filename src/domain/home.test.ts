@@ -9,7 +9,7 @@ const none = () => null;
 const withQs = (id: string, days: number[]): Deal => {
   const d = blankDeal(id);
   d.id = id;
-  d.questions = days.map((n, i) => ({ q: `q${i}`, cat: 'a', priority: 'Décisive', status: 'Envoyée', answer: '', awaitedFrom: 'director', sentAt: ago(n), answeredAt: null }));
+  d.questions = days.map((n, i) => ({ id: `q${i}`, q: `q${i}`, cat: 'a', priority: 'Décisive', status: 'Envoyée', answer: '', awaitedFrom: 'director', sentAt: ago(n), answeredAt: null }));
   return d;
 };
 

@@ -10,8 +10,9 @@ import { Chip } from '../ui/Chip';
 import { DateInput, Field, Select, TextInput } from '../ui/Field';
 import { Icon } from '../ui/Icon';
 import { Reveal } from '../ui/Reveal';
+import { newItemId } from '../../domain/dealShape';
 import { missingQuestions, withAnswered, withSent } from './compute';
-import { useBind, useProject } from './ProjectContext';
+import { useBind, useBindItem, useProject } from './ProjectContext';
 
 const CATS = ['Financier', 'Commercial', 'Produit', 'Juridique', 'RH', 'Fiscal', 'IT'];
 const PRIOS = ['Décisive', 'Importante', 'Normale'];
@@ -19,35 +20,36 @@ const STATUSES = ['Ouverte', 'Envoyée', 'Répondue'];
 const DECISIONS: Decision[] = ['go_dd', 'indicative_offer', 'no_go'];
 
 const newQuestion = (q: string, cat = 'Financier', priority = 'Importante'): Question => ({
-  q, cat, priority, status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null,
+  id: newItemId(), q, cat, priority, status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null,
 });
 
 export function Demandes() {
-  const { deal: d, meta, c, me, members, editable, patch, act } = useProject();
+  const { deal: d, meta, c, me, members, editable, act, appendItems, removeItem, updateItem } = useProject();
   const bind = useBind();
+  const bindQ = useBindItem();
   const { t, locale } = useI18n();
   const qs = d.questions || [];
   const missing = missingQuestions(d, c.b, t);
   const waits = waitsFor(d, meta, new Date());
-  const setQs = (next: Question[]) => patch(['questions'], next);
   const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(locale === 'en' ? 'en-GB' : 'fr-FR', { timeZone: 'Europe/Paris' }) : '');
   const validator = members.find((m) => m.id === meta.validatedBy);
   const canDecide = !!me && can(me, 'decide', meta);
   const canValidate = !!me && meta.phase === 'associate_review' && !meta.validatedAt && can(me, 'validateBote', meta);
   const committee = bind(['committeeDate'], t('Date de comité'));
 
-  const lateness = (i: number, q: Question) => {
+  const lateness = (q: Question) => {
     if (q.answeredAt) return <Chip tone="good">{t('Répondue le {0}', day(q.answeredAt))}</Chip>;
-    const w = waits.find((x) => x.source === 'question' && x.questionIndex === i);
+    const w = waits.find((x) => x.source === 'question' && x.questionId === q.id);
     if (!w) return <span className="dim">—</span>;
     if (w.level === 'ok') return <Chip>{t('{0} j d’attente', w.days)}</Chip>;
     return <Chip tone={w.level === 'late' ? 'amber' : 'bad'}>{t('{0} j de retard', w.days)}</Chip>;
   };
-  const setSent = (i: number, q: Question, v: string | null) => {
-    patch(['questions', String(i)], withSent(q, v));
+  // Only the date and the status it implies are written, never the whole question.
+  const setSent = (q: Question, v: string | null) => {
+    updateItem('questions', q.id, { sentAt: v, status: withSent(q, v).status });
   };
-  const setAnswered = (i: number, q: Question, v: string | null) => {
-    patch(['questions', String(i)], withAnswered(q, v));
+  const setAnswered = (q: Question, v: string | null) => {
+    updateItem('questions', q.id, { answeredAt: v, status: withAnswered(q, v).status });
   };
 
   return (
@@ -102,7 +104,7 @@ export function Demandes() {
 
       <Reveal index={1}>
         <Card className="mt" title={t('Demandes d’informations au vendeur')} icon="inbox"
-          right={editable ? <button type="button" className="btn sm" onClick={() => setQs([...qs, newQuestion('')])}><Icon name="plus" />{t('Ajouter')}</button> : null}>
+          right={editable ? <button type="button" className="btn sm" onClick={() => appendItems('questions', [newQuestion('')])}><Icon name="plus" />{t('Ajouter')}</button> : null}>
           <div className="tw">
             <table>
               <thead>
@@ -113,25 +115,26 @@ export function Demandes() {
               </thead>
               <tbody>
                 {qs.length ? qs.map((q, i) => {
-                  const sent = bind(['questions', i, 'sentAt'], t('Envoyée le'));
-                  const ans = bind(['questions', i, 'answeredAt'], t('Répondue le'));
+                  const f = (field: string, label: string) => bindQ('questions', i, q.id, field, label);
+                  const sent = f('sentAt', t('Envoyée le'));
+                  const ans = f('answeredAt', t('Répondue le'));
                   return (
-                    <tr key={i}>
+                    <tr key={q.id} data-question={q.id}>
                       <td className="wrapc">
-                        <TextInput {...bind(['questions', i, 'q'], t('Question'))} value={q.q} />
-                        <div style={{ marginTop: 6 }}><TextInput {...bind(['questions', i, 'answer'], t('Réponse'))} value={q.answer} placeholder={t('Réponse du vendeur')} /></div>
+                        <TextInput {...f('q', t('Question'))} value={q.q} />
+                        <div style={{ marginTop: 6 }}><TextInput {...f('answer', t('Réponse'))} value={q.answer} placeholder={t('Réponse du vendeur')} /></div>
                       </td>
-                      <td><Select {...bind(['questions', i, 'cat'], t('Thème'))} value={q.cat} options={CATS.map((x) => [x, t(x)])} /></td>
-                      <td><Select {...bind(['questions', i, 'priority'], t('Priorité'))} value={q.priority} options={PRIOS.map((x) => [x, t(x)])} /></td>
-                      <td><Select {...bind(['questions', i, 'status'], t('Statut'))} value={q.status} options={STATUSES.map((x) => [x, t(x)])} /></td>
+                      <td><Select {...f('cat', t('Thème'))} value={q.cat} options={CATS.map((x) => [x, t(x)])} /></td>
+                      <td><Select {...f('priority', t('Priorité'))} value={q.priority} options={PRIOS.map((x) => [x, t(x)])} /></td>
+                      <td><Select {...f('status', t('Statut'))} value={q.status} options={STATUSES.map((x) => [x, t(x)])} /></td>
                       <td>
-                        <Select<Recipient> {...bind(['questions', i, 'awaitedFrom'], t('Destinataire'))} value={q.awaitedFrom ?? null}
+                        <Select<Recipient> {...f('awaitedFrom', t('Destinataire'))} value={q.awaitedFrom ?? null}
                           options={[['', '—'], ...RECIPIENTS.map((r): [Recipient, string] => [r, recipientLabel(locale, r)])]} />
                       </td>
-                      <td><DateInput {...sent} value={q.sentAt} onCommit={(v) => setSent(i, q, v)} /></td>
-                      <td><DateInput {...ans} value={q.answeredAt} onCommit={(v) => setAnswered(i, q, v)} /></td>
-                      <td>{lateness(i, q)}</td>
-                      <td>{editable && <button type="button" className="iconbtn" aria-label={t('Supprimer')} onClick={() => setQs(qs.filter((_, j) => j !== i))}><Icon name="x" /></button>}</td>
+                      <td><DateInput {...sent} value={q.sentAt} onCommit={(v) => setSent(q, v)} /></td>
+                      <td><DateInput {...ans} value={q.answeredAt} onCommit={(v) => setAnswered(q, v)} /></td>
+                      <td>{lateness(q)}</td>
+                      <td>{editable && <button type="button" className="iconbtn" aria-label={t('Supprimer')} onClick={() => removeItem('questions', q.id)}><Icon name="x" /></button>}</td>
                     </tr>
                   );
                 }) : <tr><td colSpan={9} className="empty">{t('Aucune question.')}</td></tr>}
@@ -143,7 +146,7 @@ export function Demandes() {
               <span className="askicon"><Icon name="info" /></span>
               <div><b>{t('{0} données de la grille sans demande associée', missing.length)}</b><span className="mini">{missing.map((m) => t(m[0])).join(', ')}</span></div>
               {editable && (
-                <button type="button" className="btn sm end" onClick={() => setQs([...qs, ...missing.map((m) => newQuestion(m[1], m[2], m[3]))])}>{t('Ajouter les questions')}</button>
+                <button type="button" className="btn sm end" onClick={() => appendItems('questions', missing.map((m) => newQuestion(m[1], m[2], m[3])))}>{t('Ajouter les questions')}</button>
               )}
             </div>
           )}

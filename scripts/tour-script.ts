@@ -244,7 +244,7 @@ const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString(
 
 type Q = Deal['questions'][number];
 const q = (text: string, cat: string, priority: string, extra: Partial<Q> = {}): Q => ({
-  q: text, cat, priority, status: extra.sentAt ? 'Envoyée' : 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...extra,
+  id: `q-${text.slice(0, 24)}`, q: text, cat, priority, status: extra.sentAt ? 'Envoyée' : 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...extra,
 });
 
 function deal(id: string, over: Partial<Deal>): Deal {

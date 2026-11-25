@@ -108,5 +108,45 @@ test('demandes : destinataire, dates et retard', async ({ page }) => {
   await expect(first.getByLabel('Statut')).toHaveValue('Ouverte');
   await expect(first.getByText(/j de retard/)).toHaveCount(0);
   await openTab(page, 'Activité');
-  await expect(page.getByText('questions.0', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('questions.0.sentAt', { exact: true }).first()).toBeVisible();
+});
+
+test('demandes : une question supprimée par un collègue ne détourne pas la saisie en cours', async ({ page }) => {
+  type R = { __bosRepo: {
+    removeItem(id: string, list: string, itemId: string): Promise<void>;
+    getDeal(id: string): Promise<{ deal: { questions: { id: string; q: string; answer: string }[] } }>;
+  } };
+  await page.goto(`/projet/${DEMO}/demandes`);
+  const third = page.locator('[data-question="helios-q3"]');
+  const answer = third.getByLabel('Réponse');
+  await answer.click();
+  await answer.fill('Contrat de travail joint');
+  // meanwhile, someone else deletes the first question: the rows shift while the field is focused
+  await page.evaluate(async (id) => { await (window as unknown as R).__bosRepo.removeItem(id, 'questions', 'helios-q1'); }, DEMO);
+  await expect(page.locator('[data-question="helios-q1"]')).toHaveCount(0);
+  await expect(answer).toHaveValue('Contrat de travail joint');
+  await answer.blur();
+  await expect.poll(async () => page.evaluate(async (id) => {
+    const { deal } = await (window as unknown as R).__bosRepo.getDeal(id);
+    return deal.questions.map((q) => [q.id, q.answer]);
+  }, DEMO)).toEqual([['helios-q2', ''], ['helios-q3', 'Contrat de travail joint'], ['helios-q4', '']]);
+});
+
+test('retraitements et comparables : ajout puis suppression par ligne', async ({ page }) => {
+  await page.goto(`/projet/${DEMO}/financiers`);
+  const qoe = page.locator('.card').filter({ hasText: 'Qualité des résultats' });
+  await expect(qoe.getByLabel('Libellé')).toHaveCount(3);
+  await qoe.getByRole('button', { name: 'Ajouter' }).click();
+  await expect(qoe.getByLabel('Libellé')).toHaveCount(4);
+  await qoe.getByLabel('Libellé').nth(3).fill('Loyer intragroupe');
+  await qoe.getByLabel('Libellé').nth(3).press('Enter');
+  await qoe.getByRole('button', { name: 'Supprimer' }).first().click();
+  await expect(qoe.getByLabel('Libellé')).toHaveCount(3);
+  await expect(qoe.getByLabel('Libellé').nth(2)).toHaveValue('Loyer intragroupe');
+  await openTab(page, 'Valorisation');
+  const comps = page.locator('.card').filter({ hasText: 'Transactions comparables' });
+  await expect(comps.getByLabel('Cible')).toHaveCount(6);
+  await comps.getByRole('button', { name: 'Supprimer' }).nth(1).click();
+  await expect(comps.getByLabel('Cible')).toHaveCount(5);
+  await expect(comps.getByLabel('Cible').nth(1)).toHaveValue('Cible C (illustratif)');
 });

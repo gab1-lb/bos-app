@@ -208,3 +208,70 @@ describe('members, invites, mandate, templates, locale', () => {
     expect((await r.me())!.locale).toBe('fr');
   });
 });
+
+describe('list items by id (mirrors deal_list_append / _remove / _update)', () => {
+  const Q = (id: string, q: string) => ({ id, q, cat: 'Financier', priority: 'Normale', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null });
+  const qs = async (r: ReturnType<typeof fresh>, id: string) => (await r.getDeal(id))!.deal.questions;
+
+  it('stores created and imported deals with an id on every list item', async () => {
+    const r = fresh();
+    const raw = { ...blankDeal('N'), questions: [{ q: 'a' }, { q: 'b' }] } as never;
+    const id = await r.createDeal(raw);
+    const ids = (await qs(r, id)).map((q) => q.id);
+    expect(ids.every((x) => typeof x === 'string' && x)).toBe(true);
+    expect(new Set(ids).size).toBe(2);
+    // stable across reads
+    expect((await qs(r, id)).map((q) => q.id)).toEqual(ids);
+  });
+
+  it('a removal never redirects a later edit to another row, and edits are not lost', async () => {
+    const r = fresh(); const id = await r.createDeal(blankDeal('N'));
+    for (const [k, t] of [['a', 'A'], ['b', 'B'], ['c', 'C']]) await r.appendItem(id, 'questions', Q(k, t));
+    await r.updateItem(id, 'questions', 'c', { answer: 'yes' });
+    await r.removeItem(id, 'questions', 'a');
+    await r.updateItem(id, 'questions', 'c', { answer: 'later', sentAt: '2026-11-01', status: 'Envoyée' });
+    const after = await qs(r, id);
+    expect(after.map((q) => [q.id, q.answer])).toEqual([['b', ''], ['c', 'later']]);
+    expect(after[1]).toMatchObject({ sentAt: '2026-11-01', status: 'Envoyée' });
+    const log = await r.activity(id);
+    expect(log.filter((e) => e.kind === 'list_add')).toHaveLength(3);
+    expect(log.find((e) => e.kind === 'list_remove')).toMatchObject({ path: 'questions', oldValue: Q('a', 'A'), newValue: null });
+    expect(log.find((e) => e.path === 'questions.1.answer')).toMatchObject({ oldValue: 'yes', newValue: 'later' });
+    expect(log.filter((e) => e.kind === 'patch' && e.path?.startsWith('questions.1.'))).toHaveLength(3);
+  });
+
+  it('removing an absent item is a no-op; updating it is not_found', async () => {
+    const r = fresh(); const id = await r.createDeal(blankDeal('N'));
+    await r.removeItem(id, 'questions', 'nope');
+    expect((await r.activity(id)).filter((e) => e.kind === 'list_remove')).toHaveLength(0);
+    expect(await code(r.updateItem(id, 'questions', 'nope', { answer: 'x' }))).toBe('not_found');
+  });
+
+  it('validates the list, the item and the fields', async () => {
+    const r = fresh(); const id = await r.createDeal(blankDeal('N'));
+    await r.appendItem(id, 'questions', Q('a', 'A'));
+    expect(await code(r.appendItem(id, 'questions', Q('a', 'dup')))).toBe('invalid');
+    expect(await code(r.appendItem(id, 'questions', { q: 'x' } as never))).toBe('invalid');
+    expect(await code(r.appendItem(id, 'name' as never, Q('z', 'Z') as never))).toBe('invalid');
+    expect(await code(r.updateItem(id, 'questions', 'a', { id: 'b' }))).toBe('invalid');
+    expect(await code(r.updateItem(id, 'questions', 'a', {}))).toBe('invalid');
+    expect(await code(r.appendItem('missing', 'questions', Q('z', 'Z')))).toBe('not_found');
+    await r.appendItem(id, 'adjustments', { id: 'j', label: 'L', amount: 1, included: false, status: 'À confirmer' });
+    await r.appendItem(id, 'comps', { id: 'k', target: 'T', buyer: '', year: 2024, geo: '', niche: '', rev: null, ebitda: null, ev: null, include: true });
+    await r.updateItem(id, 'comps', 'k', { include: false });
+    const { deal } = (await r.getDeal(id))!;
+    expect(deal.adjustments[0].id).toBe('j');
+    expect(deal.comps[0].include).toBe(false);
+  });
+
+  it('needs the edit right', async () => {
+    const r = fresh(); const id = await firstId(r);
+    r.asMember(reader.id);
+    expect(await code(r.appendItem(id, 'questions', Q('x', 'X')))).toBe('forbidden');
+    expect(await code(r.removeItem(id, 'questions', 'helios-q1'))).toBe('forbidden');
+    expect(await code(r.updateItem(id, 'questions', 'helios-q1', { answer: 'x' }))).toBe('forbidden');
+    r.asMember(analyst.id);
+    await r.updateItem(id, 'questions', 'helios-q1', { answer: 'ok' });
+    expect((await qs(r, id))[0].answer).toBe('ok');
+  });
+});

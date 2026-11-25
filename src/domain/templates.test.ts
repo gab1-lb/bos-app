@@ -33,9 +33,9 @@ describe('templates', () => {
   it('questionsFor filters by recipient; days from late questions', () => {
     const d = demoDeal();
     d.questions = [
-      { q: 'Q1', cat: '', priority: '', status: 'Envoyée', answer: '', awaitedFrom: 'seller', sentAt: ago(10), answeredAt: null },
-      { q: 'Q2', cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: 'director', sentAt: null, answeredAt: null },
-      { q: 'Q3', cat: '', priority: '', status: 'Répondue', answer: '', awaitedFrom: 'seller', sentAt: ago(20), answeredAt: ago(2) },
+      { id: 'tq1', q: 'Q1', cat: '', priority: '', status: 'Envoyée', answer: '', awaitedFrom: 'seller', sentAt: ago(10), answeredAt: null },
+      { id: 'tq2', q: 'Q2', cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: 'director', sentAt: null, answeredAt: null },
+      { id: 'tq3', q: 'Q3', cat: '', priority: '', status: 'Répondue', answer: '', awaitedFrom: 'seller', sentAt: ago(20), answeredAt: ago(2) },
     ];
     const r = renderTemplate(tpl('reminder', 'fr'), { ...ctx(d), recipient: 'seller' });
     expect(r.body).toContain('- Q1');
@@ -46,7 +46,7 @@ describe('templates', () => {
 });
 
 describe('review fixes', () => {
-  const Q = (q: string, o: object) => ({ q, cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...o });
+  const Q = (q: string, o: object) => ({ id: q, q, cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...o });
   it('go_dd and no_go never disclose max price or hurdle', () => {
     for (const key of ['go_dd', 'no_go'] as const) {
       for (const locale of ['fr', 'en'] as const) {
@@ -88,7 +88,7 @@ describe('suggestTemplate', () => {
   const w = (level: Wait['level'], source: Wait['source'] = 'question'): Wait =>
     ({ dealId: 'd1', source, label: '', from: 'seller', since: ago(9), days: 9, level });
   const deal = demoDeal();
-  deal.questions = [{ q: 'Q', cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null }];
+  deal.questions = [{ id: 'tq4', q: 'Q', cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null }];
   it('maps cases', () => {
     expect(suggestTemplate(mkMeta(), [w('late')])).toBe('reminder');
     expect(suggestTemplate(mkMeta(), [w('overdue')])).toBe('reminder');
@@ -111,7 +111,7 @@ describe('mailtoHref', () => {
 });
 
 describe('home dialog helpers', () => {
-  const Q = (q: string, o: object) => ({ q, cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...o });
+  const Q = (q: string, o: object) => ({ id: q, q, cat: '', priority: '', status: 'Ouverte', answer: '', awaitedFrom: null, sentAt: null, answeredAt: null, ...o });
   const wait = (from: Wait['from'], days: number): Wait => ({ dealId: 'd', source: 'question', label: 'x', from, since: ago(days), days, level: days > 7 ? 'late' : 'ok' });
   it('reminder to the director includes sent questions with no explicit recipient (same default as waits)', () => {
     const d = demoDeal();

@@ -10,6 +10,7 @@ export type Wait = {
   days: number;
   level: 'ok' | 'late' | 'overdue';
   questionIndex?: number;
+  questionId?: string;
 };
 
 const TZ = 'Europe/Paris';
@@ -32,8 +33,8 @@ const levelOf = (days: number): Wait['level'] => (days > 14 ? 'overdue' : days >
 
 export function waitsFor(deal: Deal, meta: DealMeta, now: Date): Wait[] {
   const out: Wait[] = [];
-  deal.questions.forEach((q, i) => {
-    if (!q.sentAt || q.answeredAt) return;
+  (Array.isArray(deal.questions) ? deal.questions : []).forEach((q, i) => {
+    if (!q || !q.sentAt || q.answeredAt) return;
     const days = daysSince(q.sentAt, now);
     out.push({
       dealId: deal.id,
@@ -45,6 +46,7 @@ export function waitsFor(deal: Deal, meta: DealMeta, now: Date): Wait[] {
       days,
       level: levelOf(days),
       questionIndex: i,
+      questionId: q.id,
     });
   });
   if (meta.phase === 'associate_review' && !meta.validatedAt) {

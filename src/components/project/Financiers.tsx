@@ -7,14 +7,16 @@ import { Check, Field, NumInput, Select, TextInput } from '../ui/Field';
 import { Icon } from '../ui/Icon';
 import { Reveal } from '../ui/Reveal';
 import { niceStep } from '../valuation/gaugeScale';
-import { useBind, useProject } from './ProjectContext';
+import { newItemId } from '../../domain/dealShape';
+import { useBind, useBindItem, useProject } from './ProjectContext';
 
 const ok = (n: number | null | undefined): n is number => n != null && Number.isFinite(n);
 const ADJ_STATUS = ['Accepté', 'À confirmer', 'Rejeté'];
 
 export function Financiers() {
-  const { deal: d, c, patch, editable } = useProject();
+  const { deal: d, c, patch, editable, appendItems, removeItem } = useProject();
   const bind = useBind();
+  const bindA = useBindItem();
   const { t, nf, pc, sg, meur, unitM } = useI18n();
   const b = c.b, h = d.hist, yrs = h.years;
   const pl = plan(d, d.plan.growth.length) || [];
@@ -48,7 +50,7 @@ export function Financiers() {
   };
 
   const adj = d.adjustments || [];
-  const setAdj = (next: Adjustment[]) => patch(['adjustments'], next);
+  const newAdj = (): Adjustment => ({ id: newItemId(), label: t('Nouveau retraitement'), amount: 0, included: false, status: 'À confirmer' });
   const kfield = (label: string, path: string[], value: number | null, unit: string, o: { d?: number; ref?: string; ph?: string } = {}) => {
     const bd = bind(path, label);
     return (
@@ -108,21 +110,24 @@ export function Financiers() {
 
       <Reveal className="g2b mt" index={1}>
         <Card title={t('Qualité des résultats')} icon="scale"
-          right={editable ? <button type="button" className="btn sm" onClick={() => setAdj([...adj, { label: t('Nouveau retraitement'), amount: 0, included: false, status: 'À confirmer' }])}><Icon name="plus" />{t('Ajouter')}</button> : null}>
+          right={editable ? <button type="button" className="btn sm" onClick={() => appendItems('adjustments', [newAdj()])}><Icon name="plus" />{t('Ajouter')}</button> : null}>
           <div className="tw">
             <table>
               <thead><tr><th>{t('Retraitement')}</th><th className="n">{UM}</th><th>{t('Inclus vendeur')}</th><th>{t('Statut')}</th><th /></tr></thead>
               <tbody>
                 <tr className="tot"><td>{t('EBITDA publié')} {b.year || ''}</td><td className="n">{b.ebitda == null ? '—' : nf(b.ebitda, 2)}</td><td /><td /><td /></tr>
-                {adj.map((a, i) => (
-                  <tr key={i}>
-                    <td><TextInput {...bind(['adjustments', i, 'label'], t('Libellé'))} value={a.label} className="w-xl" /></td>
-                    <td className="n"><NumInput {...bind(['adjustments', i, 'amount'], t('Montant'))} value={a.amount} decimals={2} className="w-s" /></td>
-                    <td><Check {...bind(['adjustments', i, 'included'], t('Inclus vendeur'))} checked={a.included} /></td>
-                    <td><Select {...bind(['adjustments', i, 'status'], t('Statut'))} value={a.status} options={ADJ_STATUS.map((s) => [s, t(s)])} /></td>
-                    <td>{editable && <button type="button" className="iconbtn" aria-label={t('Supprimer')} onClick={() => setAdj(adj.filter((_, j) => j !== i))}><Icon name="x" /></button>}</td>
-                  </tr>
-                ))}
+                {adj.map((a, i) => {
+                  const f = (field: string, label: string) => bindA('adjustments', i, a.id, field, label);
+                  return (
+                    <tr key={a.id}>
+                      <td><TextInput {...f('label', t('Libellé'))} value={a.label} className="w-xl" /></td>
+                      <td className="n"><NumInput {...f('amount', t('Montant'))} value={a.amount} decimals={2} className="w-s" /></td>
+                      <td><Check {...f('included', t('Inclus vendeur'))} checked={a.included} /></td>
+                      <td><Select {...f('status', t('Statut'))} value={a.status} options={ADJ_STATUS.map((s) => [s, t(s)])} /></td>
+                      <td>{editable && <button type="button" className="iconbtn" aria-label={t('Supprimer')} onClick={() => removeItem('adjustments', a.id)}><Icon name="x" /></button>}</td>
+                    </tr>
+                  );
+                })}
                 <tr className="tot"><td>{t('EBITDA retenu')}</td><td className="n">{b.adjEbitda == null ? '—' : nf(b.adjEbitda, 2)}</td><td colSpan={3} className="dim" style={{ fontWeight: 450 }}>{sg(b.adjNet, 2, ' ' + UM)} {t('vs publié')}</td></tr>
               </tbody>
             </table>

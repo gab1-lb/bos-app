@@ -40,3 +40,17 @@ describe('mapPgError', () => {
     expect(mapPgError(null)).toBeInstanceOf(RepoError);
   });
 });
+
+describe('rowToDealRecord normalisation', () => {
+  it('fills malformed lists and flags generated item ids as unsaved', () => {
+    const r = rowToDealRecord({ ...row, data: { name: 'N', questions: [{ q: 'a' }], comps: null, adjustments: 'x' } });
+    expect(r.deal.comps).toEqual([]);
+    expect(r.deal.adjustments).toEqual([]);
+    expect(r.deal.questions[0].id).toBeTruthy();
+    expect(r.unsavedIds).toEqual(['questions']);
+  });
+  it('reports nothing unsaved when every item has an id', () => {
+    const r = rowToDealRecord({ ...row, data: { name: 'N', questions: [{ id: 'q', q: 'a' }] } });
+    expect(r.unsavedIds).toBeUndefined();
+  });
+});

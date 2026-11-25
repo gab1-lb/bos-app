@@ -7,7 +7,7 @@ const now = NOW;
 const dealWithQ = (sentDaysAgo: number, answered = false) => {
   const d = blankDeal('X');
   d.id = 'd1';
-  d.questions = [{ q: 'Churn ?', cat: 'a', priority: 'Décisive', status: 'Envoyée', answer: '', awaitedFrom: 'director', sentAt: ago(sentDaysAgo), answeredAt: answered ? ago(1) : null }];
+  d.questions = [{ id: 'q1', q: 'Churn ?', cat: 'a', priority: 'Décisive', status: 'Envoyée', answer: '', awaitedFrom: 'director', sentAt: ago(sentDaysAgo), answeredAt: answered ? ago(1) : null }];
   return d;
 };
 
@@ -26,7 +26,7 @@ describe('waitsFor', () => {
     expect(waitsFor(dealWithQ(8), mkMeta(), now)[0].level).toBe('late');
     expect(waitsFor(dealWithQ(15), mkMeta(), now)[0].level).toBe('overdue');
     const w = waitsFor(dealWithQ(8), mkMeta(), now)[0];
-    expect(w).toMatchObject({ source: 'question', label: 'Churn ?', from: 'director', questionIndex: 0 });
+    expect(w).toMatchObject({ source: 'question', label: 'Churn ?', from: 'director', questionIndex: 0, questionId: 'q1' });
   });
   it('ignores answered or unsent', () => {
     expect(waitsFor(dealWithQ(8, true), mkMeta(), now)).toEqual([]);
