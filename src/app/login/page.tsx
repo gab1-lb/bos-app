@@ -1,23 +1,14 @@
-'use client';
-import { useState } from 'react';
-import { createClient } from '../../lib/supabase/client';
+import { cookies, headers } from 'next/headers';
+import { LOCALE_COOKIE, pickLocale } from '../../i18n/pickLocale';
+import { LoginButton } from './LoginButton';
 
-export default function LoginPage() {
-  const [error, setError] = useState(false);
-  const signIn = async () => {
-    setError(false);
-    const { error: err } = await createClient().auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (err) setError(true);
-  };
+export default async function LoginPage() {
+  const locale = pickLocale((await cookies()).get(LOCALE_COOKIE)?.value, (await headers()).get('accept-language'));
   return (
-    <main style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', gap: 16, textAlign: 'center' }}>
+    <main lang={locale} style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', gap: 16, textAlign: 'center' }}>
       <div>
         <h1>BOS</h1>
-        <button type="button" onClick={signIn}>Se connecter avec Google</button>
-        {error && <p role="alert">La connexion avec Google a échoué. Réessayez.</p>}
+        <LoginButton locale={locale} />
       </div>
     </main>
   );

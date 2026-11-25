@@ -5,6 +5,7 @@ import type { Repo } from '../data/repo';
 import { createSupabaseRepo } from '../data/supabaseRepo';
 import type { Member } from '../domain/permissions';
 import { fmt, t, type Locale } from '../i18n/format';
+import { LOCALE_COOKIE } from '../i18n/pickLocale';
 import { getMemorySessionRepo, isMemoryMode } from './session';
 import { createClient } from './supabase/client';
 
@@ -43,7 +44,10 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    if (me) document.documentElement.lang = me.locale;
+    if (!me) return;
+    document.documentElement.lang = me.locale;
+    // Remembered for the sign-in and waiting pages, which have no member yet.
+    document.cookie = `${LOCALE_COOKIE}=${me.locale}; path=/; max-age=31536000; samesite=lax`;
   }, [me]);
 
   const toast = useCallback((msg: string, bad = false) => {

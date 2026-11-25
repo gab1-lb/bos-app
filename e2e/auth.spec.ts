@@ -36,3 +36,24 @@ test('se déconnecter renvoie vers /login', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
 });
+
+test.describe('navigateur en anglais', () => {
+  test.use({ locale: 'en-US' });
+
+  test('connexion et attente en anglais', async ({ page }) => {
+    await page.goto('/login');
+    await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+    expect(await page.locator('html').getAttribute('lang')).toBe('en');
+    await page.goto('/attente?refus=1');
+    await expect(page.getByText('This Google account is not authorised')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  });
+
+  test('la langue choisie dans l’application est retenue pour la page de connexion', async ({ page }) => {
+    await page.goto('/login?as=analyst');
+    await expect(page.getByRole('heading', { level: 1, name: 'Accueil' })).toBeVisible();
+    await page.getByRole('button', { name: 'Se déconnecter' }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole('button', { name: 'Se connecter avec Google' })).toBeVisible();
+  });
+});

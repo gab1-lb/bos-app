@@ -398,7 +398,6 @@ export const EN: Record<string, string> = {
   "Accueil": "Home",
   "Votre accès est en attente de validation par un administrateur": "Your access is awaiting approval by an administrator",
   "Ce compte Google n'est pas autorisé": "This Google account is not authorised",
-  "La connexion avec Google a échoué. Réessayez.": "Google sign-in failed. Please try again.",
   "Mon projet": "My deal",
   "Administration": "Administration",
   "Navigation principale": "Main navigation",
@@ -643,4 +642,5 @@ export const EN: Record<string, string> = {
   "Marge d’EBITDA cible": "Target EBITDA margin",
   "Années": "Years",
   "1 élément": "1 item",
+  "La connexion avec Google a échoué ({0}). Réessayez.": "Google sign-in failed ({0}). Please try again.",
 };

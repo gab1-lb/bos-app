@@ -8,7 +8,8 @@ const chromium = '/opt/pw-browsers/chromium';
 export default defineConfig({
   testDir: './e2e',
   reporter: 'list',
-  use: { trace: 'off', launchOptions: existsSync(chromium) ? { executablePath: chromium } : {} },
+  // French browsers by default (the team's language); English is tested explicitly with test.use({ locale }).
+  use: { trace: 'off', locale: 'fr-FR', launchOptions: existsSync(chromium) ? { executablePath: chromium } : {} },
   projects: [
     { name: 'memory', testIgnore: /supabase-mode/, use: { baseURL: `http://localhost:${PORT}` } },
     { name: 'supabase', testMatch: /supabase-mode/, use: { baseURL: `http://localhost:${PORT_SB}` } },
