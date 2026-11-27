@@ -9,6 +9,7 @@ import {
   type Template, type TemplateKey,
 } from '../../domain/templates';
 import type { Wait } from '../../domain/waits';
+import { markDemo } from '../../lib/demo/progress';
 import { useI18n, useMe } from '../../lib/repo-context';
 import { Chip } from '../ui/Chip';
 import { Icon } from '../ui/Icon';
@@ -81,6 +82,12 @@ export function MessageDialog({ rec, waits, mandate, templates, initialKey, onCl
     return { key: initialKey, recipient, ...render(initialKey, recipient) };
   });
   const [copied, setCopied] = useState<'' | 'body' | 'subject' | 'failed'>('');
+
+  // Demo "À essayer" checklist: the message opened (or picked) counts as prepared.
+  useEffect(() => {
+    if (state.key === 'committee_note') markDemo('msg:committee_note');
+    else if (state.key === 'info_request' || state.key === 'reminder') markDemo('msg:director');
+  }, [state.key]);
 
   useEffect(() => {
     const d = ref.current;

@@ -7,6 +7,8 @@ import { homeCards, homeCounters } from '../../domain/home';
 import type { Member } from '../../domain/permissions';
 import { DEFAULT_TEMPLATES, suggestTemplate, type Template, type TemplateKey } from '../../domain/templates';
 import { useI18n, useMe, useRepo } from '../../lib/repo-context';
+import { isDemo } from '../../lib/session';
+import { TryCard } from '../demo/TryCard';
 import { MessageDialog } from '../messages/MessageDialog';
 import { Icon } from '../ui/Icon';
 import { Reveal } from '../ui/Reveal';
@@ -82,6 +84,8 @@ export function HomeBoard() {
           <Link className="btn" href="/dossiers"><Icon name="folder" />{t('Mes dossiers')}</Link>
         </div>
       </Reveal>
+
+      {isDemo() && <Reveal index={1}><TryCard /></Reveal>}
 
       {failed && !data && <div className="card panel"><div className="empty">{t('Chargement impossible. Réessayez dans un instant.')}</div></div>}
       {!data && !failed && <div className="loading" aria-busy="true">…</div>}

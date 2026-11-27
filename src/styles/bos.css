@@ -582,3 +582,24 @@ dialog.tourdlg video { display: block; width: 100%; height: auto; max-height: ca
 .wl-go { margin-top: auto; padding-top: 4px; }
 @media (max-width: 760px) { .welcome .hero p { max-width: 100%; } }
 @media (max-width: 640px) { .wl-roles { grid-template-columns: minmax(0, 1fr); } .welcome .hero { padding: 24px 20px; } }
+
+/* Démo : carte « À essayer » de l'accueil */
+.trycard { padding: 0; margin-bottom: 18px; }
+.try-head { display: flex; align-items: center; gap: 10px; padding: 12px 18px 12px 12px; }
+.try-head h2 { font-size: 17px; font-weight: 640; letter-spacing: -.4px; }
+.try-count { margin-left: auto; padding: 2px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 620; font-variant-numeric: tabular-nums; background: var(--blue-soft); color: var(--blue-ink); border: 1px solid var(--blue-line); white-space: nowrap; }
+.try-count.all { background: var(--good-soft); color: var(--good); border-color: var(--good-line); }
+.try-steps { list-style: none; margin: 0; padding: 0 18px 14px 50px; display: grid; gap: 2px; }
+.try-step { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; min-width: 0; }
+.try-box { flex: none; width: 18px; height: 18px; margin-top: 1px; display: grid; place-items: center; border-radius: 5px; border: 1.5px solid var(--line-3); background: var(--surface); }
+.try-box .icon { width: 13px; height: 13px; stroke-width: 2.6; }
+.try-step.done .try-box { background: var(--good); border-color: var(--good); color: #fff; }
+.try-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; font-size: 14.5px; line-height: 1.45; }
+.try-label { color: var(--ink-2); text-align: left; overflow-wrap: anywhere; }
+a.try-label, button.try-label { color: var(--blue-ink); font-weight: 560; }
+a.try-label:hover, button.try-label:hover { text-decoration: underline; }
+.try-step.done .try-label { color: var(--muted); font-weight: 450; text-decoration: line-through; text-decoration-color: var(--faint); }
+.try-dl { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 2px; }
+.try-dl .icon { width: 14px; height: 14px; }
+.try-dl:hover { color: var(--blue-ink); }
+@media (max-width: 640px) { .try-steps { padding-left: 18px; } }

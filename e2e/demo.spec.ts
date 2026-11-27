@@ -129,3 +129,88 @@ test('welcome fits a phone (390 px)', async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test('checklist ticks', async ({ page }) => {
+  const errors = watchConsole(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  const card = page.locator('[data-try]');
+  const step = (id: string) => card.locator(`[data-step="${id}"]`);
+  await expect(card.getByRole('heading', { name: 'À essayer' })).toBeVisible();
+  await expect(card.locator('[data-try-count]')).toHaveText('0 / 5');
+  await expect(card.locator('[data-step]')).toHaveCount(5);
+  await expect(step('import_im').getByRole('link', { name: 'IM fictif à importer (PDF)' })).toHaveAttribute('href', '/demo/IM_Projet_Kepler_fictif.pdf');
+
+  // First step: Atlas's Synthèse (which also ticks « Ouvrir une synthèse »), then sign the BOTe off.
+  await step('review_atlas').getByRole('link', { name: 'Relire le BOTe d’Atlas, puis le valider ou le renvoyer' }).click();
+  await expect(page).toHaveURL(/\/projet\/demo-atlas\/synthese$/);
+  await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Demandes d’infos' }).click();
+  await page.getByRole('button', { name: 'Valider le BOTe' }).click();
+  await expect(page.getByText(/Validé par Aron Associate le/)).toBeVisible();
+
+  // Back by the nav link: no reload, so the in-memory progress is kept.
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Accueil' }).click();
+  await expect(card.locator('[data-try-count]')).toHaveText('2 / 5');
+  await expect(step('review_atlas')).toHaveAttribute('data-done', 'true');
+  await expect(step('open_synthese')).toHaveAttribute('data-done', 'true');
+  for (const id of ['committee_msg', 'import_im', 'feedback']) await expect(step(id), id).toHaveAttribute('data-done', 'false');
+
+  // Third step: Cérès's page, a message, the « Note au comité » template.
+  await step('committee_msg').getByRole('link', { name: 'Préparer le message au comité (Cérès)' }).click();
+  await expect(page).toHaveURL(/\/projet\/demo-ceres\/synthese$/);
+  await page.getByRole('button', { name: 'Rédiger un message' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Modèle').selectOption({ label: 'Note au comité' });
+  await dialog.getByRole('button', { name: 'Fermer' }).click();
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Accueil' }).click();
+  await expect(step('committee_msg')).toHaveAttribute('data-done', 'true');
+  await expect(card.locator('[data-try-count]')).toHaveText('3 / 5');
+
+  // Collapsible.
+  await card.getByRole('button', { name: 'Replier À essayer' }).click();
+  await expect(card.locator('[data-step]')).toHaveCount(0);
+  await card.getByRole('button', { name: 'Déplier À essayer' }).click();
+  await expect(card.locator('[data-step]')).toHaveCount(5);
+  expect(errors).toEqual([]);
+});
+
+test('checklist: the analyst steps tick', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis analyste/ }).click();
+  const card = page.locator('[data-try]');
+  await expect(card.locator('[data-step]')).toHaveText([
+    /Importer l’IM fictif Kepler/, 'Compléter une donnée manquante', 'Passer un dossier en « BOTe rédigé »', 'Écrire au dirigeant', 'Donner mon avis',
+  ]);
+  await expect(card.locator('[data-try-count]')).toHaveText('0 / 5');
+  const step = (id: string) => card.locator(`[data-step="${id}"]`);
+
+  // A message to the director from Borée's card (late waits: a reminder).
+  const boree = page.locator('[data-deal-card="demo-boree"]');
+  await boree.getByRole('button', { name: 'Relancer' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel('Destinataire')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Fermer' }).click();
+  await expect(step('director_msg')).toHaveAttribute('data-done', 'true');
+
+  // A missing data point filled in on Borée's Synthèse.
+  await boree.getByRole('link', { name: 'Projet Borée' }).click();
+  await expect(page).toHaveURL(/\/projet\/demo-boree\/synthese$/);
+  const field = page.locator('.mdata input:not([readonly])').first();
+  await field.fill('12');
+  await field.press('Enter');
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Accueil' }).click();
+  await expect(step('fill_missing')).toHaveAttribute('data-done', 'true');
+  await expect(card.locator('[data-try-count]')).toHaveText('2 / 5');
+});
+
+test('checklist fits a phone (390 px)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  await expect(page.locator('[data-try] [data-step]')).toHaveCount(5);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  const box = await page.locator('[data-try]').boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+});

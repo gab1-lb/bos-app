@@ -48,6 +48,9 @@ test('accueil : l’exemple avec sa phase et son attente, sans le deal décidé'
   const card = page.locator('[data-deal-card="demo-helios"]');
   await expect(card).toBeVisible();
   await expect(card.getByText('Analyse en cours').first()).toBeVisible();
+  // The « À essayer » checklist belongs to the public demo only.
+  await expect(page.locator('[data-try]')).toHaveCount(0);
+  await expect(page.getByText('À essayer')).toHaveCount(0);
   await seed(page);
   // live update: the wait appears without reload
   const wait = card.locator('[data-wait]').filter({ hasText: 'Dirigeant' });

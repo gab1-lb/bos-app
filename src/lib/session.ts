@@ -3,10 +3,10 @@ import { getRepo } from '../data';
 import type { MemoryRepo } from '../data/memoryRepo';
 import type { Repo } from '../data';
 import type { Member, MemberStatus, Role } from '../domain/permissions';
+import { markDemo } from './demo/signals';
+import { isDemo } from './mode';
 
-export const isMemoryMode = () => process.env.NEXT_PUBLIC_DATA_MODE === 'memory';
-/** Public demo build (memory data, visitors enter without an account). */
-export const isDemo = () => isMemoryMode() && process.env.NEXT_PUBLIC_DEMO === '1';
+export { isDemo, isMemoryMode } from './mode';
 /** Roles a demo visitor can try (welcome screen, demo bar, `/login?as=` links). */
 export type DemoRole = 'associate' | 'analyst' | 'admin';
 const DEMO_ROLES: readonly DemoRole[] = ['associate', 'analyst', 'admin'];
@@ -86,7 +86,7 @@ export function getMemorySessionRepo(): Repo {
     const m = readCookie(MEMORY_COOKIE);
     if (m) repo.asMember(decodeURIComponent(m));
   }
-  return {
+  const session: Repo = {
     ...repo,
     async setMember(id: string, patch: Partial<Pick<Member, 'role' | 'status'>>) {
       await repo.setMember(id, patch);
@@ -95,4 +95,13 @@ export function getMemorySessionRepo(): Repo {
       document.cookie = `${MEMORY_MEMBERS_COOKIE}=${encodeURIComponent(JSON.stringify(all))}; path=/; samesite=lax`;
     },
   };
+  if (isDemo()) {
+    // "À essayer" checklist: any saved edit to a deal ticks « Compléter une donnée manquante ».
+    Object.assign(session, {
+      async patchDeal(...a: Parameters<Repo['patchDeal']>) { await repo.patchDeal(...a); markDemo('edit'); },
+      async updateItem(...a: Parameters<Repo['updateItem']>) { await repo.updateItem(...a); markDemo('edit'); },
+      async appendItem(...a: Parameters<Repo['appendItem']>) { await repo.appendItem(...a); markDemo('edit'); },
+    } satisfies Partial<Repo>);
+  }
+  return session;
 }
