@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
-import { feedbackEmail, feedbackMailto, feedbackText, setFeedbackOpen, useFeedbackOpen, type Feedback } from '../../lib/demo/feedback';
+import { clearFeedbackDraft, feedbackActions, feedbackEmail, feedbackMailto, feedbackText, getFeedbackDraft, setFeedbackDraft, setFeedbackOpen, useFeedbackOpen, type Feedback } from '../../lib/demo/feedback';
 import { markDemo } from '../../lib/demo/signals';
 import { useApp, useI18n, useMe } from '../../lib/repo-context';
 import { Icon } from '../ui/Icon';
@@ -20,10 +20,17 @@ function FeedbackDialog({ onClose }: { onClose(): void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const uid = useId();
   const to = feedbackEmail();
-  const [score, setScore] = useState<Feedback['usefulness']>(null);
-  const [missing, setMissing] = useState('');
-  const [wouldUse, setWouldUse] = useState<Feedback['wouldUse']>(null);
-  const [comment, setComment] = useState('');
+  const [init] = useState(getFeedbackDraft);
+  const [score, setScore] = useState<Feedback['usefulness']>(init.usefulness);
+  const [missing, setMissing] = useState(init.missing);
+  const [wouldUse, setWouldUse] = useState<Feedback['wouldUse']>(init.wouldUse);
+  const [comment, setComment] = useState(init.comment);
+  const done = useRef(false);
+  const latest = useRef({ usefulness: score, missing, wouldUse, comment });
+  latest.current = { usefulness: score, missing, wouldUse, comment };
+  // Closed by accident (Escape, ✕): the answers wait in the store until sent / copied.
+  useEffect(() => () => { if (!done.current) setFeedbackDraft(latest.current); }, []);
+  const sent = () => { done.current = true; clearFeedbackDraft(); markDemo('feedback'); };
 
   useEffect(() => {
     const d = ref.current;
@@ -36,7 +43,7 @@ function FeedbackDialog({ onClose }: { onClose(): void }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(feedbackText(fb, locale));
-      markDemo('feedback');
+      sent();
       toast(t('Réponses copiées'));
     } catch {
       toast(t('Copie impossible : sélectionnez le texte puis Ctrl+C.'), true);
@@ -77,7 +84,7 @@ function FeedbackDialog({ onClose }: { onClose(): void }) {
         </div>
       </div>
       <footer>
-        {to && <a className="btn" href={feedbackMailto(fb, to, locale)} onClick={() => markDemo('feedback')}><Icon name="mail" />{t('Envoyer par e-mail')}</a>}
+        {to && feedbackActions(to).includes('mail') && <a className="btn" href={feedbackMailto(fb, to, locale)} onClick={sent}><Icon name="mail" />{t('Envoyer par e-mail')}</a>}
         <button type="button" className="btn primary" onClick={() => { void copy(); }}><Icon name="copy" />{t('Copier mes réponses')}</button>
       </footer>
     </dialog>

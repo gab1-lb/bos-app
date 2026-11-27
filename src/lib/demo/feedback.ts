@@ -40,7 +40,7 @@ export function feedbackText(f: Feedback, locale: Locale): string {
 }
 
 export function feedbackMailto(f: Feedback, to: string, locale: Locale): string {
-  return `mailto:${to}?subject=${encodeURIComponent(L[locale].subject)}&body=${encodeURIComponent(feedbackText(f, locale))}`;
+  return `mailto:${to}?subject=${encodeURIComponent(L[locale].subject)}&body=${encodeURIComponent(feedbackText(f, locale).replace(/\n/g, '\r\n'))}`;
 }
 
 /** The founder's address, base64-encoded at build time (never written in the repo). Null when absent or invalid. */
@@ -52,6 +52,17 @@ export function feedbackEmail(): string | null {
     return s.includes('@') ? s : null;
   } catch { return null; }
 }
+
+/** Which actions the dialog offers: the mail link only when an address is configured. */
+export const feedbackActions = (email: string | null): ('mail' | 'copy')[] => (email ? ['mail', 'copy'] : ['copy']);
+
+/* Draft kept while the dialog is closed by accident; cleared once sent/copied (module state: a reload drops it). */
+export type FeedbackDraft = Omit<Feedback, 'role'>;
+export const EMPTY_DRAFT: FeedbackDraft = { usefulness: null, missing: '', wouldUse: null, comment: '' };
+let draft: FeedbackDraft = EMPTY_DRAFT;
+export const getFeedbackDraft = (): FeedbackDraft => draft;
+export const setFeedbackDraft = (d: FeedbackDraft): void => { draft = d; };
+export const clearFeedbackDraft = (): void => { draft = EMPTY_DRAFT; };
 
 /* Open/close state shared by the demo bar and the checklist (module state, like the other demo stores). */
 let open = false;

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { feedbackEmail, feedbackMailto, feedbackText, type Feedback } from './feedback';
+import { feedbackActions, feedbackEmail, feedbackMailto, feedbackText, type Feedback } from './feedback';
 
 const base: Feedback = { usefulness: 4, missing: 'Un export Excel & PDF', wouldUse: 'yes', comment: 'Très clair #1\nMerci é à', role: 'associate' };
 
@@ -27,7 +27,9 @@ describe('feedbackMailto', () => {
     const m = /^mailto:a@b\.fr\?subject=([^&]*)&body=([\s\S]*)$/.exec(href);
     expect(m).not.toBeNull();
     expect(decodeURIComponent(m![1])).toBe('Avis sur BOS (démo)');
-    expect(decodeURIComponent(m![2])).toBe(feedbackText(base, 'fr'));
+    expect(m![2]).toContain('%0D%0A');
+    expect(m![2].replace(/%0D%0A/g, '')).not.toContain('%0A');
+    expect(decodeURIComponent(m![2])).toBe(feedbackText(base, 'fr').replace(/\n/g, '\r\n'));
   });
 });
 
@@ -43,5 +45,12 @@ describe('feedbackEmail', () => {
     expect(feedbackEmail()).toBeNull();
     vi.stubEnv('NEXT_PUBLIC_FEEDBACK_B64', btoa('nope'));
     expect(feedbackEmail()).toBeNull();
+  });
+});
+
+describe('feedbackActions', () => {
+  it('hides the mail link without an address', () => {
+    expect(feedbackActions(null)).toEqual(['copy']);
+    expect(feedbackActions('a@b.fr')).toEqual(['mail', 'copy']);
   });
 });

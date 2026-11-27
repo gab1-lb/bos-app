@@ -263,3 +263,17 @@ test('feedback dialog fits a phone', async ({ page }) => {
   expect(o[1]).toBeLessThanOrEqual(0);
   expect(o[2]).toBeLessThanOrEqual(390);
 });
+
+test('feedback: answers survive an accidental close', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  const open = () => page.locator('.demobar').getByRole('button', { name: 'Donner mon avis' }).click();
+  await open();
+  let dialog = page.getByRole('dialog', { name: 'Votre avis sur BOS' });
+  await dialog.getByLabel('Un commentaire ?').fill('à garder');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await open();
+  dialog = page.getByRole('dialog', { name: 'Votre avis sur BOS' });
+  await expect(dialog.getByLabel('Un commentaire ?')).toHaveValue('à garder');
+});
