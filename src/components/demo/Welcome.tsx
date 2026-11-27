@@ -1,30 +1,12 @@
 'use client';
-import { useCallback, useState, useSyncExternalStore } from 'react';
-import { useApp, useI18n } from '../../lib/repo-context';
-import { PERSONA_BY_ROLE, rememberedDemoRole, type DemoRole } from '../../lib/session';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useDemoChosen } from '../../lib/demo/role';
+import { useI18n } from '../../lib/repo-context';
+import type { DemoRole } from '../../lib/session';
 import { TourDialog } from '../home/TourCard';
 import { Icon } from '../ui/Icon';
 import { Reveal } from '../ui/Reveal';
-
-/* Demo only. "Chosen" = a role remembered by the bos_as cookie at load, or one picked in this page life
-   (welcome, demo bar, `?as=`). Module state, so it survives client-side navigation without any cookie. */
-let picked = false;
-let atLoad: boolean | undefined;
-const listeners = new Set<() => void>();
-const subscribe = (cb: () => void) => { listeners.add(cb); return () => { listeners.delete(cb); }; };
-const isChosen = () => picked || (atLoad ??= rememberedDemoRole() !== null);
-
-/** Whether the demo visitor has a role yet, and how to pick one (applied without navigation). */
-export function useDemoChosen(): [boolean, (role: DemoRole) => Promise<void>] {
-  const { switchPersona } = useApp();
-  const chosen = useSyncExternalStore(subscribe, isChosen, () => false);
-  const choose = useCallback(async (role: DemoRole) => {
-    await switchPersona(PERSONA_BY_ROLE[role].id);
-    picked = true;
-    listeners.forEach((l) => l());
-  }, [switchPersona]);
-  return [chosen, choose];
-}
 
 const ROLES: [DemoRole, string, string][] = [
   ['associate', 'Je suis associate', 'Relire et valider le BOTe d’un dossier en revue, puis préparer le comité.'],
@@ -35,7 +17,14 @@ const ROLES: [DemoRole, string, string][] = [
 export function Welcome() {
   const { t, locale } = useI18n();
   const [, choose] = useDemoChosen();
+  const router = useRouter();
+  const path = usePathname();
   const [video, setVideo] = useState(false);
+  // The choice leads to the Accueil in that role, whatever page the visitor arrived on.
+  const enter = async (role: DemoRole) => {
+    await choose(role);
+    if (path !== '/') router.push('/');
+  };
   return (
     <div className="welcome">
       <Reveal as="section" className="hero">
@@ -54,7 +43,7 @@ export function Welcome() {
       <div className="wl-roles">
         {ROLES.map(([role, title, line], i) => (
           <Reveal key={role} index={i + 1}>
-            <button type="button" className={`card wl-role ${i === 0 ? 'rec' : ''}`} onClick={() => { void choose(role); }}>
+            <button type="button" className={`card wl-role ${i === 0 ? 'rec' : ''}`} onClick={() => { void enter(role); }}>
               <span className="wl-top"><b>{t(title)}</b>{i === 0 && <span className="wl-badge">{t('Recommandé')}</span>}</span>
               <span className="wl-sub">{t(line)}</span>
               <span className="link wl-go">{t('Entrer dans la démo')}<Icon name="chev" /></span>

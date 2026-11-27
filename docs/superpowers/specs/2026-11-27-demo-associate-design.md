@@ -94,6 +94,8 @@ du comportement du site d'équipe (bos-app-bnq1).
   redirige jamais, sauf `/login?as=X` → `/?as=X` ; le rôle se choisit dans la page (bienvenue ou `?as=`),
   sans navigation, et le cookie `bos_as` le retient quand le navigateur l'accepte (cookies refusés : ça
   marche quand même, sans boucle ; la bienvenue revient au prochain chargement).
+- Démo : changer le statut d'un persona depuis l'Administration (en attente, refusé) ne redirige plus vers
+  `/attente` (règle « jamais de redirection » ; données fictives).
 - Avancement des étapes déduit de l'état du dépôt mémoire et du journal d'activité (ex. Atlas validé ou
   renvoyé ; dossier importé) plutôt que de clics, pour rester juste quel que soit le chemin pris.
 - Personas inchangés (Anna Analyst, Aron Associate…) pour ne pas toucher aux e2e.

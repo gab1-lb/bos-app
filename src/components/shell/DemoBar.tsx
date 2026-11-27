@@ -1,7 +1,7 @@
 'use client';
 import { useI18n, useMe } from '../../lib/repo-context';
 import { PERSONA_BY_ROLE } from '../../lib/session';
-import { useDemoChosen } from '../demo/Welcome';
+import { useDemoChosen } from '../../lib/demo/role';
 import { Icon } from '../ui/Icon';
 
 const ROLES = [['associate', 'Associé'], ['analyst', 'Analyste'], ['admin', 'Administrateur']] as const;

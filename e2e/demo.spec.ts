@@ -36,6 +36,14 @@ test('welcome then associate', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('a deep link with no role: welcome, then the choice leads to the Accueil', async ({ page }) => {
+  await page.goto('/dossiers');
+  await expect(welcome(page)).toBeVisible();
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  await expect(page).toHaveURL((u) => u.pathname === '/' && u.search === '');
+  await expectAssociateHome(page);
+});
+
 test('a role remembered by cookie skips the welcome on the next load', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Je suis analyste/ }).click();

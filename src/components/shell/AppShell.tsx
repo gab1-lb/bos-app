@@ -1,9 +1,10 @@
 'use client';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { RepoProvider } from '../../lib/repo-context';
 import { demoRoleFrom, isDemo } from '../../lib/session';
-import { Welcome, useDemoChosen } from '../demo/Welcome';
+import { useDemoChosen } from '../../lib/demo/role';
+import { Welcome } from '../demo/Welcome';
 import { DemoBar } from './DemoBar';
 import { TopBar } from './TopBar';
 
@@ -19,24 +20,23 @@ export function AppShell({ children }: { children: ReactNode }) {
 /** Démo publique : le rôle se choisit dans la page (bienvenue ou `?as=`), sans redirection ni cookie obligatoire. */
 function DemoShell({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [chosen, choose] = useDemoChosen();
   // Rendered client-side only (RepoProvider renders nothing on the server), so `window` is there.
   const [asRole] = useState(() => demoRoleFrom(new URLSearchParams(window.location.search).get('as')));
   const [applying, setApplying] = useState(asRole !== null);
+  const applied = useRef(false);
 
   useEffect(() => {
-    if (!asRole) return;
-    let live = true;
+    // Once per page life: a later role switch (demo bar) or navigation must not bring `?as=` back.
+    if (!asRole || applied.current) return;
+    applied.current = true;
     // `/login?as=X` links land here as `?as=X`: apply the role, then drop the param from the address.
     choose(asRole).catch(() => {}).finally(() => {
-      const q = new URLSearchParams(window.location.search);
-      q.delete('as');
-      const rest = q.toString();
-      router.replace(window.location.pathname + (rest ? `?${rest}` : ''));
-      if (live) setApplying(false);
+      router.replace(pathname);
+      setApplying(false);
     });
-    return () => { live = false; };
-  }, [asRole, choose, router]);
+  }, [asRole, choose, pathname, router]);
 
   return (
     <>
