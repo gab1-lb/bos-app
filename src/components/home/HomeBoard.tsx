@@ -72,6 +72,9 @@ export function HomeBoard() {
   const firstName = me?.name.split(/\s+/)[0] ?? '';
   const open = msg && data ? data.items.find((r) => r.meta.id === msg.id) : null;
   const openCard = open ? cards.find((c) => c.meta.id === open.meta.id) : null;
+  // Demo: the « À essayer » card takes the first Reveal slot after the page head; the rest follow it.
+  const demo = isDemo();
+  const r0 = demo ? 2 : 1;
 
   return (
     <>
@@ -85,24 +88,24 @@ export function HomeBoard() {
         </div>
       </Reveal>
 
-      {isDemo() && <Reveal index={1}><TryCard /></Reveal>}
+      {demo && <Reveal index={1}><TryCard /></Reveal>}
 
       {failed && !data && <div className="card panel"><div className="empty">{t('Chargement impossible. Réessayez dans un instant.')}</div></div>}
       {!data && !failed && <div className="loading" aria-busy="true">…</div>}
 
       {data && (
         <>
-          <Reveal index={1}><Counters counts={counts} /></Reveal>
-          <Reveal className="sectionhead" index={2}>
+          <Reveal index={r0}><Counters counts={counts} /></Reveal>
+          <Reveal className="sectionhead" index={r0 + 1}>
             <h2>{t('Deals actifs')}</h2>
             <span className="period"><Icon name="list" />{t('Triés par urgence : attentes en retard d’abord')}</span>
           </Reveal>
           {cards.length === 0 ? (
-            <Reveal index={3} className="card panel"><div className="empty">{t('Aucun deal actif. Les deals décidés ou archivés sont dans Mes dossiers.')}</div></Reveal>
+            <Reveal index={r0 + 2} className="card panel"><div className="empty">{t('Aucun deal actif. Les deals décidés ou archivés sont dans Mes dossiers.')}</div></Reveal>
           ) : (
             <div className="board">
               {cards.map((c, i) => (
-                <Reveal key={c.meta.id} index={3 + Math.min(i, 8)}>
+                <Reveal key={c.meta.id} index={r0 + 2 + Math.min(i, 8)}>
                   <CardGuard fallback={(
                     <article className="card hcard" data-deal-card={c.meta.id}>
                       <div className="hc-head"><Link className="hc-name" href={`/projet/${encodeURIComponent(c.meta.id)}/synthese`}>{c.name || t('Sans nom')}</Link></div>
@@ -116,7 +119,7 @@ export function HomeBoard() {
               ))}
             </div>
           )}
-          <Reveal className="mt" index={3 + Math.min(cards.length, 8) + 1}><TourCard /></Reveal>
+          <Reveal className="mt" index={r0 + 2 + Math.min(cards.length, 8) + 1}><TourCard /></Reveal>
         </>
       )}
 

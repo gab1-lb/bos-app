@@ -1,10 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { demoSeed } from '../../engine/demoDeals';
 import { blankDeal, demoDeal } from '../../engine/samples';
 import { admin } from '../../data/personas';
 import type { DealRecord } from '../../data/repo';
 import type { DealMeta } from '../../domain/phases';
-import { demoSignals, demoSteps, markDemo, type DemoSignal } from './progress';
+import { __resetDemoSignals, demoSignals, demoSteps, latchDone, latchedDone, markDemo, type DemoSignal } from './progress';
 
 const NOW = new Date('2026-11-27T10:00:00Z');
 const T = NOW.toISOString();
@@ -18,6 +18,12 @@ const withMeta = (recs: DealRecord[], id: string, o: Partial<DealMeta>) =>
   recs.map((r) => (r.meta.id === id ? { ...r, meta: { ...r.meta, ...o } } : r));
 const done = (steps: { id: string; done: boolean }[]) => steps.filter((s) => s.done).map((s) => s.id);
 const none = new Set<DemoSignal>();
+
+beforeEach(() => { __resetDemoSignals(); });
+afterEach(() => { vi.unstubAllEnvs(); });
+const demoEnv = () => { vi.stubEnv('NEXT_PUBLIC_DATA_MODE', 'memory'); vi.stubEnv('NEXT_PUBLIC_DEMO', '1'); };
+/** What TryCard does on each render: latch the steps done now. */
+const latch = (steps: { id: string; done: boolean }[]) => latchDone(done(steps));
 
 describe('demoSteps', () => {
   it('associate, untouched: five steps in order, none done', () => {
@@ -66,9 +72,39 @@ describe('demoSteps', () => {
   });
 });
 
-describe('markDemo', () => {
-  afterEach(() => { vi.unstubAllEnvs(); });
+describe('latched steps never un-tick', () => {
+  it('analyst: write_bote stays done once the deal moves on to associate_review', () => {
+    demoEnv();
+    const written = withMeta(records(), 'demo-boree', { phase: 'bote_written' });
+    latch(demoSteps('analyst', written, none, latchedDone()));
+    const moved = withMeta(written, 'demo-boree', { phase: 'associate_review' });
+    expect(done(demoSteps('analyst', moved, none))).toEqual([]); // the rule alone no longer holds
+    expect(done(demoSteps('analyst', moved, none, latchedDone()))).toEqual(['write_bote']);
+  });
 
+  it('associate: Atlas validated then sent back to associate_review stays done', () => {
+    demoEnv();
+    latch(demoSteps('associate', withMeta(records(), 'demo-atlas', { validatedAt: T, validatedBy: 'u-associate' }), none, latchedDone()));
+    const back = withMeta(records(), 'demo-atlas', { phase: 'associate_review', validatedAt: null, validatedBy: null });
+    expect(done(demoSteps('associate', back, none, latchedDone()))).toEqual(['review_atlas']);
+  });
+
+  it('latches nothing outside the demo, and keeps one snapshot when nothing new', () => {
+    vi.stubEnv('NEXT_PUBLIC_DATA_MODE', 'memory');
+    vi.stubEnv('NEXT_PUBLIC_DEMO', '');
+    latchDone(['write_bote']);
+    expect([...latchedDone()]).toEqual([]);
+    demoEnv();
+    latchDone(['write_bote']);
+    const snap = latchedDone();
+    latchDone(['write_bote']);
+    latchDone([]);
+    expect(latchedDone()).toBe(snap);
+    expect([...snap]).toEqual(['write_bote']);
+  });
+});
+
+describe('markDemo', () => {
   it('is a no-op outside the demo', () => {
     vi.stubEnv('NEXT_PUBLIC_DATA_MODE', 'memory');
     vi.stubEnv('NEXT_PUBLIC_DEMO', '');
@@ -78,8 +114,7 @@ describe('markDemo', () => {
   });
 
   it('records each signal once in the demo, with a new snapshot on change', () => {
-    vi.stubEnv('NEXT_PUBLIC_DATA_MODE', 'memory');
-    vi.stubEnv('NEXT_PUBLIC_DEMO', '1');
+    demoEnv();
     const before = demoSignals();
     markDemo('edit');
     const after = demoSignals();

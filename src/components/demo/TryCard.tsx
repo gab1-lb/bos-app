@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { DealRecord } from '../../data/repo';
-import { demoSteps, useDemoSignals, type StepId } from '../../lib/demo/progress';
+import { demoSteps, latchDone, useDemoSignals, useLatchedDone, type StepId } from '../../lib/demo/progress';
 import { useI18n, useMe, useRepo } from '../../lib/repo-context';
 import { Icon } from '../ui/Icon';
 
@@ -23,6 +23,7 @@ export function TryCard({ onFeedback }: { onFeedback?: () => void }) {
   const me = useMe();
   const { t } = useI18n();
   const signals = useDemoSignals();
+  const latched = useLatchedDone();
   const uid = useId();
   const [open, setOpen] = useState(true);
   const [deals, setDeals] = useState<DealRecord[]>([]);
@@ -38,7 +39,13 @@ export function TryCard({ onFeedback }: { onFeedback?: () => void }) {
     return repo.subscribe(null, () => { void load(); });
   }, [repo, load]);
 
-  const steps = demoSteps(me?.role === 'analyst' ? 'analyst' : 'associate', deals, signals);
+  const steps = demoSteps(me?.role === 'analyst' ? 'analyst' : 'associate', deals, signals, latched);
+  const doneKey = steps.filter((s) => s.done).map((s) => s.id).join(' ');
+  // Once ticked, a step stays ticked for the page life (Atlas sent back then re-sent, a deal moved past « BOTe rédigé »…).
+  useEffect(() => { if (me && doneKey) latchDone(doneKey.split(' ')); }, [me, doneKey]);
+
+  // No list before the member is known: the role decides which list, so no flash of the wrong one.
+  if (!me) return null;
   const count = steps.filter((s) => s.done).length;
   const title = t('À essayer');
 

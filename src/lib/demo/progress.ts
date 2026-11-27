@@ -2,18 +2,23 @@ import { useSyncExternalStore } from 'react';
 import type { DealRecord } from '../../data/repo';
 import { DEMO_DEAL_IDS } from '../../engine/demoDeals';
 import type { DemoRole } from '../session';
-import { demoSignals, subscribeDemoSignals, type DemoSignal } from './signals';
+import { demoSignals, latchedDone, subscribeDemoSignals, type DemoSignal } from './signals';
 
-export { demoSignals, markDemo, type DemoSignal } from './signals';
+export { __resetDemoSignals, demoSignals, latchDone, latchedDone, markDemo, type DemoSignal } from './signals';
 
 export type StepId = 'review_atlas' | 'open_synthese' | 'committee_msg' | 'import_im' | 'fill_missing' | 'write_bote' | 'director_msg' | 'feedback';
 export type DemoStep = { id: StepId; done: boolean; href: string | null };
 
-const EMPTY: ReadonlySet<DemoSignal> = new Set();
+const EMPTY: ReadonlySet<never> = new Set();
 
 /** Demo signals, re-rendering on each new one (empty on the server). */
 export function useDemoSignals(): ReadonlySet<DemoSignal> {
   return useSyncExternalStore(subscribeDemoSignals, demoSignals, () => EMPTY);
+}
+
+/** Step ids latched as done, re-rendering on each new one (empty on the server). */
+export function useLatchedDone(): ReadonlySet<string> {
+  return useSyncExternalStore(subscribeDemoSignals, latchedDone, () => EMPTY);
 }
 
 const ASSOCIATE: StepId[] = ['review_atlas', 'open_synthese', 'committee_msg', 'import_im', 'feedback'];
@@ -25,8 +30,11 @@ const HREF: Partial<Record<StepId, string>> = {
   import_im: '/dossiers',
 };
 
-/** "À essayer" checklist of the public demo: steps for the role, each ticked from the deals or a signal. */
-export function demoSteps(role: DemoRole, deals: DealRecord[], signals: ReadonlySet<DemoSignal>): DemoStep[] {
+/** "À essayer" checklist of the public demo: steps for the role, each ticked from the deals or a signal,
+    or earlier (`latched`: a tick never goes away when the deal moves on). */
+export function demoSteps(
+  role: DemoRole, deals: DealRecord[], signals: ReadonlySet<DemoSignal>, latched: ReadonlySet<string> = EMPTY,
+): DemoStep[] {
   const atlas = deals.find((r) => r.meta.id === 'demo-atlas')?.meta;
   const isDone: Record<StepId, () => boolean> = {
     review_atlas: () => !!atlas && (atlas.phase !== 'associate_review' || !!atlas.validatedAt),
@@ -38,5 +46,5 @@ export function demoSteps(role: DemoRole, deals: DealRecord[], signals: Readonly
     director_msg: () => signals.has('msg:director'),
     feedback: () => signals.has('feedback'),
   };
-  return (role === 'analyst' ? ANALYST : ASSOCIATE).map((id) => ({ id, done: isDone[id](), href: HREF[id] ?? null }));
+  return (role === 'analyst' ? ANALYST : ASSOCIATE).map((id) => ({ id, done: latched.has(id) || isDone[id](), href: HREF[id] ?? null }));
 }

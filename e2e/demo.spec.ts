@@ -175,6 +175,7 @@ test('checklist ticks', async ({ page }) => {
 });
 
 test('checklist: the analyst steps tick', async ({ page }) => {
+  const errors = watchConsole(page);
   await page.goto('/');
   await page.getByRole('button', { name: /Je suis analyste/ }).click();
   const card = page.locator('[data-try]');
@@ -201,6 +202,7 @@ test('checklist: the analyst steps tick', async ({ page }) => {
   await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Accueil' }).click();
   await expect(step('fill_missing')).toHaveAttribute('data-done', 'true');
   await expect(card.locator('[data-try-count]')).toHaveText('2 / 5');
+  expect(errors).toEqual([]);
 });
 
 test('checklist fits a phone (390 px)', async ({ page }) => {
