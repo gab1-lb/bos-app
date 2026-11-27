@@ -1,6 +1,7 @@
 [build]
   command = "node scripts/netlify-build.mjs"
   publish = ".next"
+  ignore = "node scripts/netlify-ignore.mjs"
 
 [build.environment]
   NODE_VERSION = "22"
