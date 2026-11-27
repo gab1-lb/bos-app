@@ -1,6 +1,7 @@
 'use client';
 import { useI18n, useMe } from '../../lib/repo-context';
 import { PERSONA_BY_ROLE } from '../../lib/session';
+import { setFeedbackOpen } from '../../lib/demo/feedback';
 import { useDemoChosen } from '../../lib/demo/role';
 import { Icon } from '../ui/Icon';
 
@@ -24,6 +25,7 @@ export function DemoBar() {
             return <button key={role} type="button" className={on ? 'on' : ''} aria-pressed={on} onClick={() => { void choose(role); }}>{t(label)}</button>;
           })}
         </span>
+        <button type="button" className="demofb" onClick={() => setFeedbackOpen(true)}>{t('Donner mon avis')}</button>
       </div>
     </div>
   );

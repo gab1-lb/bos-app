@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { RepoProvider } from '../../lib/repo-context';
 import { demoRoleFrom, isDemo } from '../../lib/session';
 import { useDemoChosen } from '../../lib/demo/role';
+import { FeedbackHost } from '../demo/FeedbackDialog';
 import { Welcome } from '../demo/Welcome';
 import { DemoBar } from './DemoBar';
 import { TopBar } from './TopBar';
@@ -41,6 +42,7 @@ function DemoShell({ children }: { children: ReactNode }) {
   return (
     <>
       <DemoBar />
+      <FeedbackHost />
       {applying ? null : chosen ? <><TopBar /><main className="wrap">{children}</main></> : <main className="wrap"><Welcome /></main>}
     </>
   );

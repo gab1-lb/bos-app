@@ -8,6 +8,7 @@ import type { Member } from '../../domain/permissions';
 import { DEFAULT_TEMPLATES, suggestTemplate, type Template, type TemplateKey } from '../../domain/templates';
 import { useI18n, useMe, useRepo } from '../../lib/repo-context';
 import { isDemo } from '../../lib/session';
+import { setFeedbackOpen } from '../../lib/demo/feedback';
 import { TryCard } from '../demo/TryCard';
 import { MessageDialog } from '../messages/MessageDialog';
 import { Icon } from '../ui/Icon';
@@ -88,7 +89,7 @@ export function HomeBoard() {
         </div>
       </Reveal>
 
-      {demo && <Reveal index={1}><TryCard /></Reveal>}
+      {demo && <Reveal index={1}><TryCard onFeedback={() => setFeedbackOpen(true)} /></Reveal>}
 
       {failed && !data && <div className="card panel"><div className="empty">{t('Chargement impossible. Réessayez dans un instant.')}</div></div>}
       {!data && !failed && <div className="loading" aria-busy="true">…</div>}

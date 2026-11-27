@@ -112,7 +112,7 @@ test('switching role keeps data', async ({ page }) => {
   await expect(page.getByText(/Validé par Aron Associate le/)).toBeVisible();
 
   const bar = page.getByRole('note');
-  const roles = bar.getByRole('button');
+  const roles = bar.locator('.demoroles').getByRole('button');
   await expect(roles).toHaveText(['Associé', 'Analyste', 'Administrateur']);
   await expect(bar.getByRole('button', { name: 'Associé' })).toHaveAttribute('aria-pressed', 'true');
   await bar.getByRole('button', { name: 'Analyste' }).click();
@@ -215,4 +215,51 @@ test('checklist fits a phone (390 px)', async ({ page }) => {
   const box = await page.locator('[data-try]').boundingBox();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+});
+
+test('feedback: mailto link, copy, checklist step ticked', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const errors = watchConsole(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  const step = page.locator('[data-try] [data-step="feedback"]');
+  await expect(step).toHaveAttribute('data-done', 'false');
+
+  await page.locator('.demobar').getByRole('button', { name: 'Donner mon avis' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Votre avis sur BOS' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '4', exact: true }).click();
+  await dialog.getByLabel('Qu’est-ce qui manque le plus ?').fill('Un export Excel');
+  await dialog.getByRole('button', { name: 'Oui' }).click();
+  await dialog.getByLabel('Un commentaire ?').fill('Très utile & clair');
+  const mail = dialog.getByRole('link', { name: 'Envoyer par e-mail' });
+  await expect(mail).toHaveAttribute('href', /^mailto:test@example\.com\?subject=/);
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+
+  await dialog.getByRole('button', { name: 'Copier mes réponses' }).click();
+  await expect(page.getByText('Réponses copiées')).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Très utile & clair');
+  await dialog.getByRole('button', { name: 'Fermer' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(step).toHaveAttribute('data-done', 'true');
+
+  // The checklist row opens the same dialog.
+  await step.getByRole('button', { name: 'Donner mon avis' }).click();
+  await expect(page.getByRole('dialog', { name: 'Votre avis sur BOS' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('feedback dialog fits a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  await page.locator('.demobar').getByRole('button', { name: 'Donner mon avis' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Votre avis sur BOS' });
+  await expect(dialog).toBeVisible();
+  const o = await dialog.evaluate((d) => [d.scrollWidth - d.clientWidth, document.documentElement.scrollWidth - document.documentElement.clientWidth, d.getBoundingClientRect().right]);
+  expect(o[0]).toBeLessThanOrEqual(0);
+  expect(o[1]).toBeLessThanOrEqual(0);
+  expect(o[2]).toBeLessThanOrEqual(390);
 });

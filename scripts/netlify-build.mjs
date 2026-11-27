@@ -9,6 +9,8 @@ const env = { ...process.env };
 if (env.URL && !env.NEXT_PUBLIC_SITE_URL) env.NEXT_PUBLIC_SITE_URL = env.URL;
 if (env.BOS_DEMO === '1') {
   Object.assign(env, { NEXT_PUBLIC_DATA_MODE: 'memory', NEXT_PUBLIC_DEMO: '1', BOS_ALLOW_MEMORY_BUILD: '1' });
+  // Founder's address for the feedback dialog: base64 only, never logged.
+  if (env.BOS_FEEDBACK_EMAIL?.trim()) env.NEXT_PUBLIC_FEEDBACK_B64 = Buffer.from(env.BOS_FEEDBACK_EMAIL.trim()).toString('base64');
   console.log('BOS: building the public demo (memory data, no sign-in).');
 }
 const r = spawnSync('npx', ['next', 'build'], { stdio: 'inherit', env });
