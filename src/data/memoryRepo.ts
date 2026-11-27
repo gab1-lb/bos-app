@@ -13,7 +13,8 @@ export type MemoryRepo = Repo & {
   /** Memory mode only: restores a role / status decided earlier (no permission check). */
   overrideMember(id: string, patch: Partial<Pick<Member, 'role' | 'status'>>): void;
 };
-export type MemoryRepoOptions = { me?: Member; members?: Member[]; now?: () => Date };
+export type SeedDeal = { deal: Deal; meta: DealMeta };
+export type MemoryRepoOptions = { me?: Member; members?: Member[]; now?: () => Date; extraDeals?: SeedDeal[] };
 
 const DECISIONS: Decision[] = ['go_dd', 'indicative_offer', 'no_go'];
 const EARLY: Phase[] = ['im_received', 'analysis', 'bote_written'];
@@ -78,6 +79,9 @@ export function createMemoryRepo(opts: MemoryRepoOptions = {}): MemoryRepo {
       },
     });
   }
+
+  // Extra seeded deals (public demo build): stored after Hélios, no activity entry.
+  for (const x of opts.extraDeals ?? []) deals.set(x.meta.id, clone({ deal: x.deal, meta: x.meta }));
 
   const insert = (deal: Deal, meta: Omit<DealMeta, 'id'>, kind: string, details: unknown): string => {
     const id = newId();
