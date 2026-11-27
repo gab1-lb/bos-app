@@ -90,8 +90,10 @@ du comportement du site d'équipe (bos-app-bnq1).
 
 ## Décisions de conception (appels du concepteur, corrigeables)
 
-- Rôle par défaut sans choix : l'écran de bienvenue (et non plus l'entrée directe en analyste) ; si les
-  cookies sont refusés, entrée directe en associate (pas de boucle).
+- Rôle par défaut sans choix : l'écran de bienvenue (et non plus l'entrée directe en analyste). La démo ne
+  redirige jamais, sauf `/login?as=X` → `/?as=X` ; le rôle se choisit dans la page (bienvenue ou `?as=`),
+  sans navigation, et le cookie `bos_as` le retient quand le navigateur l'accepte (cookies refusés : ça
+  marche quand même, sans boucle ; la bienvenue revient au prochain chargement).
 - Avancement des étapes déduit de l'état du dépôt mémoire et du journal d'activité (ex. Atlas validé ou
   renvoyé ; dossier importé) plutôt que de clics, pour rester juste quel que soit le chemin pris.
 - Personas inchangés (Anna Analyst, Aron Associate…) pour ne pas toucher aux e2e.

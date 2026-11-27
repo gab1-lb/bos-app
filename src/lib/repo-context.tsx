@@ -17,6 +17,8 @@ type RepoCtx = {
   locale: Locale;
   setLocale(l: Locale): Promise<void>;
   toast(msg: string, bad?: boolean): void;
+  /** Memory mode only: act as another persona without a reload (in-memory deals survive), remembered by cookie when allowed. */
+  switchPersona(id: string): Promise<void>;
 };
 
 const Ctx = createContext<RepoCtx | null>(null);
@@ -28,9 +30,20 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<Member | null>(null);
   const [toastState, setToast] = useState<Toast | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const repoRef = useRef<Repo | null>(null);
+
+  const switchPersona = useCallback(async (id: string) => {
+    const r = repoRef.current;
+    if (!r || !isMemoryMode()) return;
+    (r as Repo & { asMember(id: string): void }).asMember(id);
+    // Remembered for the next page load where the browser accepts cookies; the page works without it.
+    document.cookie = `${MEMORY_COOKIE}=${encodeURIComponent(id)}; path=/; samesite=lax`;
+    setMe(await r.me());
+  }, []);
 
   useEffect(() => {
     const r = isMemoryMode() ? getMemorySessionRepo() : createSupabaseRepo(createClient());
+    repoRef.current = r;
     setRepo(r);
     let live = true;
     r.me().then((m) => { if (live) setMe(m); }).catch(() => {});
@@ -40,14 +53,10 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
       w.__bosRepo = r;
       w.__bosGo = (p: string) => router.push(p);
       // Another teammate takes the keyboard without a reload, so the in-memory deals survive (multi-user e2e paths).
-      w.__bosAs = async (id: string) => {
-        (r as Repo & { asMember(id: string): void }).asMember(id);
-        document.cookie = `${MEMORY_COOKIE}=${encodeURIComponent(id)}; path=/; samesite=lax`;
-        setMe(await r.me());
-      };
+      w.__bosAs = switchPersona;
     }
     return () => { live = false; };
-  }, [router]);
+  }, [router, switchPersona]);
 
   useEffect(() => {
     if (!me) return;
@@ -73,8 +82,8 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
   }, [repo, toast]);
 
   const value = useMemo<RepoCtx | null>(
-    () => (repo ? { repo, me, locale: me?.locale ?? 'fr', setLocale, toast } : null),
-    [repo, me, setLocale, toast],
+    () => (repo ? { repo, me, locale: me?.locale ?? 'fr', setLocale, toast, switchPersona } : null),
+    [repo, me, setLocale, toast, switchPersona],
   );
 
   if (!value) return null;

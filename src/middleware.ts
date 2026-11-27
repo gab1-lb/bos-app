@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { DEMO_ROLE, MEMORY_COOKIE, MEMORY_MEMBERS_COOKIE, isDemo, isMemoryMode, memoryStatus, parseOverrides, personaIdForRole } from './lib/session';
+import { MEMORY_COOKIE, MEMORY_MEMBERS_COOKIE, demoRoleFrom, isDemo, isMemoryMode, memoryStatus, parseOverrides, personaIdForRole } from './lib/session';
 
 const PUBLIC = ['/login', '/auth/callback', '/attente'];
 const isPublic = (path: string) => PUBLIC.some((p) => path === p || path.startsWith(`${p}/`));
@@ -19,27 +19,25 @@ const NOT_ACTIVE = { pending: '/attente', denied: '/attente?refus=1' } as const;
 
 async function memoryGate(req: NextRequest) {
   const path = req.nextUrl.pathname;
+  if (isDemo()) {
+    // Demo: never a redirect but /login, so refused cookies (embedded previews, strict browsers) cannot loop.
+    // The role is chosen in the page (welcome screen, or `?as=` applied by the shell).
+    if (path !== '/login') return NextResponse.next();
+    const role = demoRoleFrom(req.nextUrl.searchParams.get('as'));
+    return redirect(req, role ? `/?as=${role}` : '/');
+  }
   // Role / status decisions an admin made in this browser (memory mode keeps no server state).
   const overrides = parseOverrides(req.cookies.get(MEMORY_MEMBERS_COOKIE)?.value);
   if (path === '/login') {
     const id = personaIdForRole(req.nextUrl.searchParams.get('as'));
-    if (!id) return isDemo() ? redirect(req, '/') : NextResponse.next();
+    if (!id) return NextResponse.next();
     const status = memoryStatus(id, overrides);
-    const next = req.nextUrl.searchParams.get('next');
-    const home = next && /^\/(?![/\\])/.test(next) && !next.startsWith('/login') ? next : '/';
-    const res = redirect(req, status === 'pending' || status === 'denied' ? NOT_ACTIVE[status] : home);
+    const res = redirect(req, status === 'pending' || status === 'denied' ? NOT_ACTIVE[status] : '/');
     res.cookies.set(MEMORY_COOKIE, id, { path: '/', sameSite: 'lax' });
     return res;
   }
   if (isPublic(path)) return NextResponse.next();
   const status = memoryStatus(req.cookies.get(MEMORY_COOKIE)?.value, overrides);
-  if (status === 'none' && isDemo()) {
-    // Demo visitors enter straight away, on the page their link pointed to, as the default persona.
-    // No redirect: where cookies are refused (embedded previews, strict browsers) a redirect would loop.
-    const res = NextResponse.next();
-    res.cookies.set(MEMORY_COOKIE, personaIdForRole(DEMO_ROLE)!, { path: '/', sameSite: 'lax' });
-    return res;
-  }
   if (status === 'none') return redirect(req, '/login');
   if (status === 'pending' || status === 'denied') return redirect(req, NOT_ACTIVE[status]);
   return NextResponse.next();

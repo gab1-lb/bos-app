@@ -36,7 +36,7 @@ export function TourCard() {
   );
 }
 
-function TourDialog({ title, locale, onClose }: { title: string; locale: Locale; onClose(): void }) {
+export function TourDialog({ title, locale, onClose }: { title: string; locale: Locale; onClose(): void }) {
   const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const uid = useId();

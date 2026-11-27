@@ -559,7 +559,26 @@ dialog.tourdlg video { display: block; width: 100%; height: auto; max-height: ca
 .demobar .demotxt b { color: #fff; font-weight: 650; }
 .demobar .demotxt .icon { width: 15px; height: 15px; color: #8fb0ff; }
 .demobar .demoroles { display: inline-flex; align-items: center; gap: 4px; color: #a9b8d6; }
-.demobar .demoroles a { color: #dfe7f7; text-decoration: none; padding: 3px 9px; border-radius: 999px; }
-.demobar .demoroles a:hover { background: rgba(255,255,255,.08); }
-.demobar .demoroles a.on { background: #3e6cfa; color: #fff; }
+.demobar .demoroles button { color: #dfe7f7; padding: 3px 9px; border-radius: 999px; }
+.demobar .demoroles button:hover { background: rgba(255,255,255,.08); }
+.demobar .demoroles button.on { background: #3e6cfa; color: #fff; }
 .demobar .demoim { color: #8fb0ff; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Démo : écran de bienvenue */
+.welcome { display: grid; gap: 16px; padding: 22px 0 40px; }
+.welcome .hero h1 { font-size: clamp(26px, 2.6vw, 38px); font-weight: 580; letter-spacing: -1.2px; line-height: 1.15; margin: 14px 0 10px; text-wrap: balance; }
+.welcome .hero p { max-width: min(60%, 640px); }
+.welcome .wl-video { color: #fff; gap: 8px; }
+.welcome .wl-video .icon { width: 16px; height: 16px; }
+.wl-roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.wl-roles > .reveal { display: grid; }
+.wl-role { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; padding: 20px 22px; text-align: left; transition: border-color .15s, box-shadow .15s; }
+.wl-role:hover { border-color: var(--blue-line); box-shadow: 0 6px 18px #152c5214; }
+.wl-role.rec { border-color: var(--blue-line); }
+.wl-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wl-top b { font-size: 17px; font-weight: 640; letter-spacing: -.4px; }
+.wl-badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 620; background: var(--blue-soft); color: var(--blue-ink); border: 1px solid var(--blue-line); }
+.wl-sub { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.wl-go { margin-top: auto; padding-top: 4px; }
+@media (max-width: 760px) { .welcome .hero p { max-width: 100%; } }
+@media (max-width: 640px) { .wl-roles { grid-template-columns: minmax(0, 1fr); } .welcome .hero { padding: 24px 20px; } }

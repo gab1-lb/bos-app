@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { memoryStatus, parseOverrides } from './session';
+import { demoRoleFrom, memoryStatus, parseOverrides } from './session';
 
 describe('memory session overrides', () => {
   it('parses leniently', () => {
@@ -17,5 +17,14 @@ describe('memory session overrides', () => {
     expect(memoryStatus('u-analyst', { 'u-analyst': { status: 'denied' } })).toBe('denied');
     expect(memoryStatus('u-admin')).toBe('active');
     expect(memoryStatus('nobody')).toBe('none');
+  });
+});
+
+describe('demo role', () => {
+  it('accepts only the roles a demo visitor can try', () => {
+    expect(demoRoleFrom('associate')).toBe('associate');
+    expect(demoRoleFrom('analyst')).toBe('analyst');
+    expect(demoRoleFrom('admin')).toBe('admin');
+    for (const v of ['reader', 'pending', 'toString', '', null, undefined]) expect(demoRoleFrom(v)).toBeNull();
   });
 });

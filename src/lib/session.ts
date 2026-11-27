@@ -7,8 +7,11 @@ import type { Member, MemberStatus, Role } from '../domain/permissions';
 export const isMemoryMode = () => process.env.NEXT_PUBLIC_DATA_MODE === 'memory';
 /** Public demo build (memory data, visitors enter without an account). */
 export const isDemo = () => isMemoryMode() && process.env.NEXT_PUBLIC_DEMO === '1';
-/** Role a demo visitor starts with. */
-export const DEMO_ROLE = 'analyst' as const;
+/** Roles a demo visitor can try (welcome screen, demo bar, `/login?as=` links). */
+export type DemoRole = 'associate' | 'analyst' | 'admin';
+const DEMO_ROLES: readonly DemoRole[] = ['associate', 'analyst', 'admin'];
+export const demoRoleFrom = (v: string | null | undefined): DemoRole | null =>
+  DEMO_ROLES.includes(v as DemoRole) ? (v as DemoRole) : null;
 
 /** Memory mode only: the "session" is this cookie, holding a persona id. */
 export const MEMORY_COOKIE = 'bos_as';
@@ -63,15 +66,26 @@ function readCookie(name: string): string | undefined {
   return m ? m[1] : undefined;
 }
 
+/** Demo: the role remembered by the bos_as cookie, when the browser kept one. */
+export function rememberedDemoRole(): DemoRole | null {
+  if (typeof document === 'undefined') return null;
+  const id = readCookie(MEMORY_COOKIE); // persona ids are URL-safe: no decoding needed
+  return DEMO_ROLES.find((r) => PERSONA_BY_ROLE[r].id === id) ?? null;
+}
+
 /** Client-side memory repo acting as the persona named by the bos_as cookie, with earlier admin decisions applied. */
 export function getMemorySessionRepo(): Repo {
   const repo = getRepo() as MemoryRepo;
   if (typeof document === 'undefined') return repo;
   for (const [id, p] of Object.entries(parseOverrides(readCookie(MEMORY_MEMBERS_COOKIE)))) repo.overrideMember(id, p);
-  const m = readCookie(MEMORY_COOKIE);
-  if (m) repo.asMember(decodeURIComponent(m));
-  // Demo without cookies (refused by the browser): the default persona, as the middleware assumed.
-  else if (isDemo()) repo.asMember(PERSONA_BY_ROLE[DEMO_ROLE].id);
+  if (isDemo()) {
+    // Without a remembered role, the persona stays the one picked earlier in this page life (welcome, demo bar).
+    const role = rememberedDemoRole();
+    if (role) repo.asMember(PERSONA_BY_ROLE[role].id);
+  } else {
+    const m = readCookie(MEMORY_COOKIE);
+    if (m) repo.asMember(decodeURIComponent(m));
+  }
   return {
     ...repo,
     async setMember(id: string, patch: Partial<Pick<Member, 'role' | 'status'>>) {

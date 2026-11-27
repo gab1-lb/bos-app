@@ -53,3 +53,4 @@ next-env.d.ts
 # Parallel agent worktrees
 /.claude/worktrees/
 /.next-demo/
+/.next-demo-dev/
