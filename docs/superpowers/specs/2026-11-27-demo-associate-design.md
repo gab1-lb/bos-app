@@ -45,8 +45,11 @@ suivants (import robuste, export PowerPoint, NDA, mémoire des deals…), hors p
    l'utiliseriez-vous sur un vrai dossier (oui / peut-être / non + commentaire). Bouton **« Envoyer par
    e-mail »** = lien `mailto:` pré-rempli (objet + réponses) vers l'adresse du fondateur ; bouton
    **« Copier le texte »** en secours (webmail sans client mail). Aucun serveur, aucun compte.
-   - Adresse fournie au build par une variable Netlify `NEXT_PUBLIC_FEEDBACK_EMAIL` du projet démo
-     (pas écrite dans le dépôt GitHub public). Sans variable : seulement « Copier le texte ».
+   - Destinataire : l'adresse personnelle du fondateur (son choix, risques acceptés en connaissance de
+     cause). Fournie par la variable Netlify `BOS_FEEDBACK_EMAIL` du seul projet démo (jamais dans le
+     dépôt GitHub public) ; `scripts/netlify-build.mjs` l'encode (base64) dans `NEXT_PUBLIC_FEEDBACK_B64`
+     et la page ne la reconstitue qu'au clic, pour échapper aux robots qui moissonnent les adresses.
+     Sans variable : seulement « Copier le texte ».
 5. **Correctif boucle de redirection** (commit 854bed1, déjà prêt) livré dans le même envoi.
 6. **Économie de crédits Netlify** : règle `ignore` dans `netlify.toml` qui saute le build quand seuls
    `docs/`, `e2e/`, des `*.test.ts` ou des `*.md` changent. Tout le chantier part en **un seul envoi**
