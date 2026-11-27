@@ -149,7 +149,7 @@ export function demoSeed(now: Date): SeedDeal[] {
     {
       deal: ceres,
       meta: meta('demo-ceres', {
-        ownerId: associate.id, updatedBy: associate.id, phase: 'committee', phaseEnteredAt: ago(now, 3), updatedAt: ago(now, 3),
+        ownerId: associate.id, updatedBy: associate.id, phase: 'associate_review', phaseEnteredAt: ago(now, 3), updatedAt: ago(now, 3),
         committeeDate: isoDate(new Date(now.getTime() + 5 * DAY)), validatedBy: associate.id, validatedAt: ago(now, 3),
       }),
     },

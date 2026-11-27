@@ -731,4 +731,8 @@ export const EN: Record<string, string> = {
   "Envoyer par e-mail": "Send by e-mail",
   "Copier mes réponses": "Copy my answers",
   "Réponses copiées": "Answers copied",
+  "Copie impossible : sélectionnez vos réponses dans la fenêtre puis copiez-les.": "Could not copy: select your answers in the window, then copy them.",
+  "Vos réponses, à sélectionner puis copier": "Your answers, to select and copy",
+  "Votre messagerie ne s’ouvre pas ? Copiez vos réponses et envoyez-les à {0}.": "Your mail app does not open? Copy your answers and send them to {0}.",
+  "Copiez vos réponses et collez-les en réponse au message qui vous a transmis ce lien.": "Copy your answers and paste them in a reply to the message that sent you this link.",
 };

@@ -4,7 +4,7 @@ Date : 2026-11-27 · Statut : en attente d'approbation
 
 ## Intention
 
-Le fondateur (analyste, ex-stagiaire M&A chez TSS) veut envoyer BOS à **un associate de TSS** pour qu'il
+Le fondateur (analyste, ex-stagiaire M&A chez l'acquéreur) veut envoyer BOS à **un associate de l'acquéreur** pour qu'il
 le teste **seul, sans accompagnement**, sur la **démo publique** (bosolution.netlify.app, build
 `BOS_DEMO=1`, données fictives en mémoire du navigateur) avec **l'IM fictif proposé par le site**.
 L'associate ouvre le lien entre deux réunions : en moins de 2 minutes il doit comprendre à quoi sert
@@ -35,7 +35,7 @@ suivants (import robuste, export PowerPoint, NDA, mémoire des deals…), hors p
    - **Atlas** — BOTe en **revue associate** : il attend l'associate (responsable : l'analyste).
    - **Borée** — analyse en cours, **questions envoyées au dirigeant il y a 9 jours** sans réponse
      (attente en retard).
-   - **Cérès** — **présentation comité** dans 5 jours, BOTe validé.
+   - **Cérès** — **BOTe validé, comité dans 5 jours** (revue associate, note de comité à préparer).
    - **Dune** — **no-go** décidé (quitte l'Accueil, visible dans Mes dossiers) avec sa raison.
    Chaque dossier a des chiffres complets et plausibles (CA, EBITDA, croissance, récurrence, clients,
    prix demandé) pour que jauges, LBO, points positifs/négatifs et données manquantes aient du sens ;
@@ -67,7 +67,7 @@ du comportement du site d'équipe (bos-app-bnq1).
 - Il ne sait pas quoi faire en arrivant, ou ne voit que la vue analyste.
 - Donner son avis demande un compte, plus de 2 minutes, ou ne parvient jamais au fondateur.
 - Le site d'équipe change de comportement, ou le chantier coûte plusieurs envois Netlify.
-- Une donnée laisse croire qu'il s'agit d'un vrai dossier TSS (tout est fictif ; TSS n'est cité nulle part).
+- Une donnée laisse croire qu'il s'agit d'un vrai dossier de l'acquéreur (tout est fictif ; son nom n'est cité nulle part).
 
 ## Contraintes
 

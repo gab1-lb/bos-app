@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the public demo self-explanatory for a TSS associate testing alone: welcome screen with role choice, realistic 5-deal dataset, an auto-ticking "À essayer" checklist, and a "Donner mon avis" feedback dialog — shipped in one push.
+**Goal:** Make the public demo self-explanatory for an associate (from the acquirer) testing alone: welcome screen with role choice, realistic 5-deal dataset, an auto-ticking "À essayer" checklist, and a "Donner mon avis" feedback dialog — shipped in one push.
 
 **Architecture:** Everything new is gated by `isDemo()` (build flag `NEXT_PUBLIC_DEMO=1`, set by `scripts/netlify-build.mjs` when `BOS_DEMO=1`). The demo never depends on cookies: the middleware lets demo pages through, the role is chosen in the client (welcome screen or `?as=` URL param) and applied to the in-memory repo without navigation. Checklist progress = repo state (deal phases, imported deals) + a small in-memory signal store for UI-only actions (page visited, message opened, data edited, feedback sent).
 
@@ -16,7 +16,7 @@
 - All new behaviour behind `isDemo()` from `src/lib/session.ts`, except the Netlify `ignore` rule. The team site (`NEXT_PUBLIC_DATA_MODE=supabase`) and the plain memory mode used by e2e must behave exactly as before.
 - Every visible string in French with its English entry in `src/i18n/en.ts` (no duplicate keys — grep before adding).
 - Phone width 390 px: no horizontal scroll. Existing BOS style (`src/styles/bos.css` tokens, `Reveal`, `.card`, `.btn`).
-- All data fictitious; the word "TSS" appears nowhere in code or content.
+- All data fictitious; the acquirer's name appears nowhere in code or content.
 - No intermediate push to `main` (each costs ~30 Netlify credits). Commit locally on `feat/bos-webapp`; pushing that branch is fine. Task 6 does the single push to `main`.
 - Founder's e-mail never written in the repo: read at build from Netlify variable `BOS_FEEDBACK_EMAIL`, base64-encoded into `NEXT_PUBLIC_FEEDBACK_B64`, decoded only on click.
 - Commit trailers: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and `Claude-Session: https://claude.ai/code/session_01BaopDUTkAfJuSb86apM3bL`.
@@ -64,7 +64,7 @@
 Content (fictitious, vertical-software niches, France/Benelux/Spain, figures in M€, complete enough for jauges/LBO/points; exactly 1–2 missing data items each per `missingItems()`):
 - **Atlas** — gestion de flottes pour transporteurs; owner `analyst.id`; phase `associate_review`, `phaseEnteredAt` = now − 2 days, not validated.
 - **Borée** — logiciel pour laboratoires d'analyses; owner `analyst.id`; phase `analysis`; 3 questions `status: 'Envoyée'`, `sentAt` = now − 9 days, `awaitedFrom: 'director'`, unanswered.
-- **Cérès** — ERP pour coopératives agricoles; owner `associate.id`; phase `committee`, `committeeDate` = now + 5 days (ISO date `YYYY-MM-DD`), `validatedBy: associate.id`, `validatedAt` = now − 3 days.
+- **Cérès** — ERP pour coopératives agricoles; owner `associate.id`; phase `associate_review` (BOTe validé, comité dans 5 jours), `committeeDate` = now + 5 days (ISO date `YYYY-MM-DD`), `validatedBy: associate.id`, `validatedAt` = now − 3 days.
 - **Dune** — logiciel de billetterie; phase `decided`, `decision: 'no_go'`, `decidedAt` = now − 6 days; no-go reason written at the start of `risks` (e.g. « No-go : 45 % du CA sur un seul client public, marge en baisse 3 années de suite. »).
 - All `example: true`, `source` « <Nom>_IM (exemple fictif) ».
 
@@ -73,7 +73,7 @@ Content (fictitious, vertical-software niches, France/Benelux/Spain, figures in 
   - every deal: `missingItems(deal, meta).length` between 1 and 2.
   - `homeCards(...)` over Hélios + seed with `DEFAULT_MANDATE`: contains Atlas, Borée, Cérès, Hélios, not Dune; `homeCounters(cards, now)` → `toReview === 1`, `committeeSoon === 1`, `lateWaits >= 3`.
   - `createMemoryRepo({ me: associate, extraDeals: demoSeed(now) })`: `listDeals()` has 5 records; `validateBote('demo-atlas')` resolves; `createMemoryRepo()` (no option) still lists only `demo-helios`.
-  - no string field of any seed deal matches `/TSS/`.
+  - no string field of any seed deal contains the acquirer's name.
 - [ ] **Step 2:** `npx vitest run src/engine/demoDeals.test.ts` → FAIL.
 - [ ] **Step 3: Implement** `demoSeed`, the `extraDeals` option, and in `getRepo()` pass `extraDeals: demoSeed(new Date())` only when `process.env.NEXT_PUBLIC_DEMO === '1'` (literal check so other builds drop it).
 - [ ] **Step 4:** `npx vitest run` → all PASS.
@@ -120,8 +120,8 @@ Behaviour:
 - Consumes: `DEMO_DEAL_IDS` (Task 2), `DemoRole` (Task 3).
 
 Step lists (in order) and done rules:
-- associate: `review_atlas` (Atlas `meta.phase !== 'associate_review'` or `validatedAt` set; href `/projet/demo-atlas/synthese`), `open_synthese` (signal `synthese`), `committee_msg` (signal `msg:committee_note`; href `/projet/demo-ceres/synthese`), `import_im` (any deal id not in `DEMO_DEAL_IDS`; href `/dossiers`), `feedback` (signal `feedback`; href null → opens the dialog from Task 5).
-- analyst: `import_im`, `fill_missing` (signal `edit`), `write_bote` (any deal with `phase === 'bote_written'`), `director_msg` (signal `msg:director` = MessageDialog opened with key `info_request` or `reminder`), `feedback`.
+- associate: `review_atlas` (Atlas `meta.phase !== 'associate_review'` or `validatedAt` set; href `/projet/demo-atlas/demandes`, « Suivi du dossier »), `open_synthese` (signal `synthese`), `committee_msg` (signal `msg:committee_note`, also sent by the « Note de comité » download; href `/projet/demo-ceres/synthese`), `import_im` (any deal id not in `DEMO_DEAL_IDS`; href `/dossiers`), `feedback` (signal `feedback`; href null → opens the dialog from Task 5).
+- analyst: `import_im`, `fill_missing` (signal `edit`), `write_bote` (any deal with `phase === 'bote_written'`, or any deal other than `demo-atlas` / `demo-ceres` in `associate_review`), `director_msg` (signal `msg:director` = MessageDialog opened with key `info_request` or `reminder`), `feedback`.
 - admin: same list as associate.
 - Labels FR: « Relire le BOTe d'Atlas, puis le valider ou le renvoyer », « Ouvrir une synthèse et ses données manquantes », « Préparer le message au comité (Cérès) », « Importer l'IM fictif Kepler » (+ download link `/demo/IM_Projet_Kepler_fictif.pdf`), « Compléter une donnée manquante », « Passer un dossier en « BOTe rédigé » », « Écrire au dirigeant », « Donner mon avis ».
 - Card: title « À essayer », counter « 2 / 5 », collapsible, each step a checkbox-style row (done = struck + green check) linking to `href`; reloads deals on `repo.subscribe(null, …)`.

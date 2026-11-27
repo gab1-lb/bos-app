@@ -6,6 +6,8 @@ import { homeCards, homeCounters } from '../domain/home';
 import { createMemoryRepo } from '../data/memoryRepo';
 import { admin, associate } from '../data/personas';
 import type { DealMeta } from '../domain/phases';
+import { suggestTemplate } from '../domain/templates';
+import { waitsFor } from '../domain/waits';
 
 const NOWS = ['2026-11-27T10:00:00Z', '2027-03-02T10:00:00Z'];
 
@@ -68,7 +70,11 @@ describe.each(NOWS)('demoSeed @ %s', (iso) => {
     const cm = by('demo-ceres').meta;
     expect(cm.committeeDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(cm.committeeDate).toBe(new Date(now.getTime() + 5 * DAY).toISOString().slice(0, 10));
-    expect(cm.validatedAt).toBeTruthy();
+    // « BOTe validé, note à préparer pour le comité » : validated in associate review, 3 days ago.
+    expect(cm.phase).toBe('associate_review');
+    expect(cm.validatedBy).toBe(associate.id);
+    expect(cm.validatedAt).toBe(new Date(now.getTime() - 3 * DAY).toISOString());
+    expect(suggestTemplate(cm, waitsFor(by('demo-ceres').deal, cm, now), by('demo-ceres').deal)).toBe('committee_note');
     expect(by('demo-dune').meta.decidedAt).toBeTruthy();
   });
 

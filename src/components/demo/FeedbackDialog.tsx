@@ -28,9 +28,10 @@ function FeedbackDialog({ onClose }: { onClose(): void }) {
   const done = useRef(false);
   const latest = useRef({ usefulness: score, missing, wouldUse, comment });
   latest.current = { usefulness: score, missing, wouldUse, comment };
-  // Closed by accident (Escape, ✕): the answers wait in the store until sent / copied.
+  // Closed by accident (Escape, ✕), or the mail link did not open a mail app: the answers wait in the store until copied.
   useEffect(() => () => { if (!done.current) setFeedbackDraft(latest.current); }, []);
-  const sent = () => { done.current = true; clearFeedbackDraft(); markDemo('feedback'); };
+  const copied = () => { done.current = true; clearFeedbackDraft(); markDemo('feedback'); };
+  const [manual, setManual] = useState(false); // copy refused by the browser: the text is shown to select by hand
 
   useEffect(() => {
     const d = ref.current;
@@ -43,10 +44,11 @@ function FeedbackDialog({ onClose }: { onClose(): void }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(feedbackText(fb, locale));
-      sent();
+      copied();
       toast(t('Réponses copiées'));
     } catch {
-      toast(t('Copie impossible : sélectionnez le texte puis Ctrl+C.'), true);
+      setManual(true);
+      toast(t('Copie impossible : sélectionnez vos réponses dans la fenêtre puis copiez-les.'), true);
     }
   };
 
@@ -82,10 +84,23 @@ function FeedbackDialog({ onClose }: { onClose(): void }) {
           <label htmlFor={`${uid}-c`}>{t('Un commentaire ?')}</label>
           <textarea id={`${uid}-c`} className="in" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
         </div>
+        {manual && (
+          <div className="field">
+            <label htmlFor={`${uid}-t`}>{t('Vos réponses, à sélectionner puis copier')}</label>
+            <textarea id={`${uid}-t`} className="in" rows={6} readOnly value={feedbackText(fb, locale)} autoFocus
+              onFocus={(e) => e.currentTarget.select()} />
+          </div>
+        )}
       </div>
       <footer>
-        {to && feedbackActions(to).includes('mail') && <a className="btn" href={feedbackMailto(fb, to, locale)} onClick={sent}><Icon name="mail" />{t('Envoyer par e-mail')}</a>}
+        {/* The mail link ticks the step but keeps the draft: with a webmail, nothing may open. */}
+        {to && feedbackActions(to).includes('mail') && <a className="btn" href={feedbackMailto(fb, to, locale)} onClick={() => markDemo('feedback')}><Icon name="mail" />{t('Envoyer par e-mail')}</a>}
         <button type="button" className="btn primary" onClick={() => { void copy(); }}><Icon name="copy" />{t('Copier mes réponses')}</button>
+        <p className="fbnote">
+          {to
+            ? t('Votre messagerie ne s’ouvre pas ? Copiez vos réponses et envoyez-les à {0}.', to)
+            : t('Copiez vos réponses et collez-les en réponse au message qui vous a transmis ce lien.')}
+        </p>
       </footer>
     </dialog>
   );

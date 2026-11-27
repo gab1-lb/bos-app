@@ -18,14 +18,17 @@ export function DemoBar() {
         <span className="demotxt"><Icon name="info" /><b>{t('Démo publique')}</b>
           <span>{t('Données fictives, rien n’est enregistré : recharger la page remet la démo à zéro.')}</span>
           <a className="demoim" href="/demo/IM_Projet_Kepler_fictif.pdf" download>{t('IM fictif à importer (PDF)')}</a></span>
-        <span className="demoroles">{t('Voir en tant que')}
-          {ROLES.map(([role, label]) => {
-            const on = chosen && me?.id === PERSONA_BY_ROLE[role].id;
-            // No navigation: the in-memory deals (and any change made to them) carry over to the new role.
-            return <button key={role} type="button" className={on ? 'on' : ''} aria-pressed={on} onClick={() => { void choose(role); }}>{t(label)}</button>;
-          })}
+        {/* Roles and feedback wrap together: the button never sits alone on a line. */}
+        <span className="demoacts">
+          <span className="demoroles">{t('Voir en tant que')}
+            {ROLES.map(([role, label]) => {
+              const on = chosen && me?.id === PERSONA_BY_ROLE[role].id;
+              // No navigation: the in-memory deals (and any change made to them) carry over to the new role.
+              return <button key={role} type="button" className={on ? 'on' : ''} aria-pressed={on} onClick={() => { void choose(role); }}>{t(label)}</button>;
+            })}
+          </span>
+          <button type="button" className="demofb" onClick={() => setFeedbackOpen(true)}>{t('Donner mon avis')}</button>
         </span>
-        <button type="button" className="demofb" onClick={() => setFeedbackOpen(true)}>{t('Donner mon avis')}</button>
       </div>
     </div>
   );

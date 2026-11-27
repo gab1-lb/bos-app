@@ -31,7 +31,7 @@ describe('demoSteps', () => {
     expect(steps.map((s) => s.id)).toEqual(['review_atlas', 'open_synthese', 'committee_msg', 'import_im', 'feedback']);
     expect(done(steps)).toEqual([]);
     expect(Object.fromEntries(steps.map((s) => [s.id, s.href]))).toEqual({
-      review_atlas: '/projet/demo-atlas/synthese', open_synthese: null, committee_msg: '/projet/demo-ceres/synthese',
+      review_atlas: '/projet/demo-atlas/demandes', open_synthese: null, committee_msg: '/projet/demo-ceres/synthese',
       import_im: '/dossiers', feedback: null,
     });
   });
@@ -66,6 +66,17 @@ describe('demoSteps', () => {
     expect(done(steps)).toEqual(['fill_missing', 'write_bote', 'director_msg']);
   });
 
+  it('analyst write_bote: another deal in associate_review ticks it, Atlas and Cérès do not', () => {
+    for (const id of ['demo-boree', 'demo-helios']) {
+      expect(done(demoSteps('analyst', withMeta(records(), id, { phase: 'associate_review' }), none)), id).toEqual(['write_bote']);
+    }
+    const kepler = { deal: { ...blankDeal('Projet Kepler'), id: 'x1' }, meta: metaOf('x1', { phase: 'associate_review' }) };
+    expect(done(demoSteps('analyst', [...records(), kepler], none))).toEqual(['import_im', 'write_bote']);
+    // The seed already has Atlas and Cérès in associate_review (untouched: not done, see above);
+    // Atlas validated stays in associate_review: still not done.
+    expect(done(demoSteps('analyst', withMeta(records(), 'demo-atlas', { validatedAt: T, validatedBy: 'u-associate' }), none))).toEqual([]);
+  });
+
   it('associate signals', () => {
     const steps = demoSteps('associate', records(), new Set<DemoSignal>(['synthese', 'msg:committee_note', 'feedback']));
     expect(done(steps)).toEqual(['open_synthese', 'committee_msg', 'feedback']);
@@ -73,11 +84,11 @@ describe('demoSteps', () => {
 });
 
 describe('latched steps never un-tick', () => {
-  it('analyst: write_bote stays done once the deal moves on to associate_review', () => {
+  it('analyst: write_bote stays done once the deal moves on to the committee', () => {
     demoEnv();
     const written = withMeta(records(), 'demo-boree', { phase: 'bote_written' });
     latch(demoSteps('analyst', written, none, latchedDone()));
-    const moved = withMeta(written, 'demo-boree', { phase: 'associate_review' });
+    const moved = withMeta(written, 'demo-boree', { phase: 'committee' });
     expect(done(demoSteps('analyst', moved, none))).toEqual([]); // the rule alone no longer holds
     expect(done(demoSteps('analyst', moved, none, latchedDone()))).toEqual(['write_bote']);
   });

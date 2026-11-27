@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { decisionLabel, phaseLabel } from '../../domain/phases';
 import { DEFAULT_TEMPLATES, suggestTemplate, type Template, type TemplateKey } from '../../domain/templates';
 import { waitsFor } from '../../domain/waits';
+import { markDemo } from '../../lib/demo/signals';
 import { exportMemo } from '../../lib/exports/memo';
 import { exportXlsx } from '../../lib/exports/xlsx';
 import { useApp, useI18n } from '../../lib/repo-context';
@@ -32,8 +33,10 @@ export function PageHead() {
   };
 
   const memo = () => {
-    try { toast(t('Fichier prêt : {0}', exportMemo(d, meta, c, locale))); }
-    catch { toast(t('Le téléchargement n’est pas disponible ici.'), true); }
+    try {
+      toast(t('Fichier prêt : {0}', exportMemo(d, meta, c, locale)));
+      markDemo('msg:committee_note'); // demo checklist « Préparer le message au comité » (no-op outside the demo)
+    } catch { toast(t('Le téléchargement n’est pas disponible ici.'), true); }
   };
   // Every phase, decided deals included: the no-go / due diligence messages are written from here.
   const message = async () => {

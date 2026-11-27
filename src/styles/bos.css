@@ -558,6 +558,7 @@ dialog.tourdlg video { display: block; width: 100%; height: auto; max-height: ca
 .demobar .demotxt { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .demobar .demotxt b { color: #fff; font-weight: 650; }
 .demobar .demotxt .icon { width: 15px; height: 15px; color: #8fb0ff; }
+.demobar .demoacts { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; margin-left: auto; }
 .demobar .demoroles { display: inline-flex; align-items: center; gap: 4px; color: #a9b8d6; }
 .demobar .demoroles button { color: #dfe7f7; padding: 3px 9px; border-radius: 999px; }
 .demobar .demoroles button:hover { background: rgba(255,255,255,.08); }
@@ -611,6 +612,7 @@ dialog.fbdlg { width: min(560px, calc(100% - 24px)); }
 dialog.fbdlg[open] { display: flex; flex-direction: column; }
 dialog.fbdlg .body { overflow-y: auto; min-height: 0; }
 dialog.fbdlg textarea.in { width: 100%; box-sizing: border-box; }
+dialog.fbdlg .fbnote { flex: 1 0 100%; margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); text-align: right; overflow-wrap: anywhere; }
 .fbq { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 8px; }
 .fbq legend { padding: 0; margin-bottom: 8px; font-size: 13.5px; font-weight: 560; }
 .fbopts { display: flex; flex-wrap: wrap; gap: 8px; }

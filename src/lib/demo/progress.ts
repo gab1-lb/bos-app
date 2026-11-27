@@ -24,8 +24,10 @@ export function useLatchedDone(): ReadonlySet<string> {
 const ASSOCIATE: StepId[] = ['review_atlas', 'open_synthese', 'committee_msg', 'import_im', 'feedback'];
 const ANALYST: StepId[] = ['import_im', 'fill_missing', 'write_bote', 'director_msg', 'feedback'];
 
+const SEEDED_IN_REVIEW = ['demo-atlas', 'demo-ceres'];
+
 const HREF: Partial<Record<StepId, string>> = {
-  review_atlas: '/projet/demo-atlas/synthese',
+  review_atlas: '/projet/demo-atlas/demandes', // « Suivi du dossier » : Valider le BOTe / Renvoyer
   committee_msg: '/projet/demo-ceres/synthese',
   import_im: '/dossiers',
 };
@@ -42,7 +44,9 @@ export function demoSteps(
     committee_msg: () => signals.has('msg:committee_note'),
     import_im: () => deals.some((r) => !DEMO_DEAL_IDS.includes(r.meta.id)),
     fill_missing: () => signals.has('edit'),
-    write_bote: () => deals.some((r) => r.meta.phase === 'bote_written'),
+    // BOTe written, or already sent on to associate review (Atlas and Cérès start there, so they do not count).
+    write_bote: () => deals.some((r) => r.meta.phase === 'bote_written'
+      || (r.meta.phase === 'associate_review' && !SEEDED_IN_REVIEW.includes(r.meta.id))),
     director_msg: () => signals.has('msg:director'),
     feedback: () => signals.has('feedback'),
   };

@@ -141,26 +141,25 @@ test('checklist ticks', async ({ page }) => {
   await expect(card.locator('[data-step]')).toHaveCount(5);
   await expect(step('import_im').getByRole('link', { name: 'IM fictif à importer (PDF)' })).toHaveAttribute('href', '/demo/IM_Projet_Kepler_fictif.pdf');
 
-  // First step: Atlas's Synthèse (which also ticks « Ouvrir une synthèse »), then sign the BOTe off.
+  // First step: Atlas's « Suivi du dossier » (Demandes d'infos tab), where the BOTe is signed off.
   await step('review_atlas').getByRole('link', { name: 'Relire le BOTe d’Atlas, puis le valider ou le renvoyer' }).click();
-  await expect(page).toHaveURL(/\/projet\/demo-atlas\/synthese$/);
-  await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'Demandes d’infos' }).click();
+  await expect(page).toHaveURL(/\/projet\/demo-atlas\/demandes$/);
   await page.getByRole('button', { name: 'Valider le BOTe' }).click();
   await expect(page.getByText(/Validé par Aron Associate le/)).toBeVisible();
 
   // Back by the nav link: no reload, so the in-memory progress is kept.
   await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Accueil' }).click();
-  await expect(card.locator('[data-try-count]')).toHaveText('2 / 5');
+  await expect(card.locator('[data-try-count]')).toHaveText('1 / 5');
   await expect(step('review_atlas')).toHaveAttribute('data-done', 'true');
-  await expect(step('open_synthese')).toHaveAttribute('data-done', 'true');
-  for (const id of ['committee_msg', 'import_im', 'feedback']) await expect(step(id), id).toHaveAttribute('data-done', 'false');
+  for (const id of ['open_synthese', 'committee_msg', 'import_im', 'feedback']) await expect(step(id), id).toHaveAttribute('data-done', 'false');
 
-  // Third step: Cérès's page, a message, the « Note au comité » template.
+  // Third step: Cérès's Synthèse (ticks « Ouvrir une synthèse »); BOS suggests the « Note au comité » itself.
+  await expect(page.locator('[data-deal-card="demo-ceres"]')).toContainText('BOTe validé, note à préparer pour le comité');
   await step('committee_msg').getByRole('link', { name: 'Préparer le message au comité (Cérès)' }).click();
   await expect(page).toHaveURL(/\/projet\/demo-ceres\/synthese$/);
   await page.getByRole('button', { name: 'Rédiger un message' }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Modèle').selectOption({ label: 'Note au comité' });
+  await expect(dialog.getByLabel('Modèle')).toHaveValue('committee_note');
   await dialog.getByRole('button', { name: 'Fermer' }).click();
   await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Accueil' }).click();
   await expect(step('committee_msg')).toHaveAttribute('data-done', 'true');
@@ -172,6 +171,34 @@ test('checklist ticks', async ({ page }) => {
   await card.getByRole('button', { name: 'Déplier À essayer' }).click();
   await expect(card.locator('[data-step]')).toHaveCount(5);
   expect(errors).toEqual([]);
+});
+
+test('checklist: the « Note de comité » download ticks the committee step', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  const step = page.locator('[data-try] [data-step="committee_msg"]');
+  await expect(step).toHaveAttribute('data-done', 'false');
+  await page.locator('[data-deal-card="demo-ceres"]').getByRole('link', { name: 'Projet Cérès' }).click();
+  await expect(page).toHaveURL(/\/projet\/demo-ceres\/synthese$/);
+  await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Note de comité' }).click()]);
+  await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Accueil' }).click();
+  await expect(step).toHaveAttribute('data-done', 'true');
+});
+
+test('demo bar: « Donner mon avis » stays with the roles (1360 px), no scroll at 390 px', async ({ page }) => {
+  await page.setViewportSize({ width: 1360, height: 800 });
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  const bar = page.locator('.demobar');
+  const mid = async (sel: string) => { const b = (await bar.locator(sel).first().boundingBox())!; return b.y + b.height / 2; };
+  await expect(bar.locator('.demofb')).toBeVisible();
+  expect(Math.abs((await mid('.demofb')) - (await mid('.demoroles button')))).toBeLessThan(4);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(bar.locator('.demofb')).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  const box = (await bar.boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
 });
 
 test('checklist: the analyst steps tick', async ({ page }) => {
@@ -234,6 +261,7 @@ test('feedback: mailto link, copy, checklist step ticked', async ({ page, contex
   await dialog.getByLabel('Un commentaire ?').fill('Très utile & clair');
   const mail = dialog.getByRole('link', { name: 'Envoyer par e-mail' });
   await expect(mail).toHaveAttribute('href', /^mailto:test@example\.com\?subject=/);
+  await expect(dialog.getByText('Votre messagerie ne s’ouvre pas ? Copiez vos réponses et envoyez-les à test@example.com.')).toBeVisible();
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
@@ -276,4 +304,41 @@ test('feedback: answers survive an accidental close', async ({ page }) => {
   await open();
   dialog = page.getByRole('dialog', { name: 'Votre avis sur BOS' });
   await expect(dialog.getByLabel('Un commentaire ?')).toHaveValue('à garder');
+});
+
+test('feedback: the mail link ticks the step but keeps the answers (webmail: nothing may open)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  const step = page.locator('[data-try] [data-step="feedback"]');
+  const open = () => page.locator('.demobar').getByRole('button', { name: 'Donner mon avis' }).click();
+  await open();
+  let dialog = page.getByRole('dialog', { name: 'Votre avis sur BOS' });
+  await dialog.getByLabel('Un commentaire ?').fill('envoyé par webmail');
+  const mail = dialog.getByRole('link', { name: 'Envoyer par e-mail' });
+  // No mail app in the test browser: stop the mailto navigation, keep the click handler.
+  await mail.evaluate((a) => a.addEventListener('click', (e) => e.preventDefault()));
+  await mail.click();
+  await dialog.getByRole('button', { name: 'Fermer' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(step).toHaveAttribute('data-done', 'true');
+  await open();
+  dialog = page.getByRole('dialog', { name: 'Votre avis sur BOS' });
+  await expect(dialog.getByLabel('Un commentaire ?')).toHaveValue('envoyé par webmail');
+});
+
+test('feedback: copy refused, the answers are shown to select', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Je suis associate/ }).click();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new Error('denied')) } });
+  });
+  await page.locator('.demobar').getByRole('button', { name: 'Donner mon avis' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Votre avis sur BOS' });
+  await dialog.getByLabel('Un commentaire ?').fill('à copier à la main');
+  await dialog.getByRole('button', { name: 'Copier mes réponses' }).click();
+  await expect(page.getByText('Copie impossible : sélectionnez vos réponses dans la fenêtre puis copiez-les.')).toBeVisible();
+  const text = dialog.getByLabel('Vos réponses, à sélectionner puis copier');
+  await expect(text).toHaveJSProperty('readOnly', true);
+  await expect(text).toHaveValue(/Commentaire : à copier à la main/);
+  await expect(page.locator('[data-try] [data-step="feedback"]')).toHaveAttribute('data-done', 'false');
 });
