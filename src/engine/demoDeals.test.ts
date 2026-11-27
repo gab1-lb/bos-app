@@ -58,6 +58,20 @@ describe.each(NOWS)('demoSeed @ %s', (iso) => {
     expect((await plain.listDeals()).map((r) => r.meta.id)).toEqual(['demo-helios']);
   });
 
+  it('dates and states', () => {
+    const DAY = 86400000;
+    const by = (id: string) => seed.find((x) => x.meta.id === id)!;
+    for (const q of by('demo-boree').deal.questions) {
+      expect(q.sentAt).toBe(new Date(now.getTime() - 9 * DAY).toISOString());
+      expect(q.answeredAt).toBeNull();
+    }
+    const cm = by('demo-ceres').meta;
+    expect(cm.committeeDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(cm.committeeDate).toBe(new Date(now.getTime() + 5 * DAY).toISOString().slice(0, 10));
+    expect(cm.validatedAt).toBeTruthy();
+    expect(by('demo-dune').meta.decidedAt).toBeTruthy();
+  });
+
   it('no TSS and all flagged example', () => {
     for (const s of seed) {
       expect(strings(s.deal).some((x) => /TSS/.test(x))).toBe(false);
